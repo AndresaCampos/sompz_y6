@@ -3,9 +3,7 @@ import numpy as np
 import NoiseSOM as ns
 import h5py
     
-path_cats = '/global/cscratch1/sd/acampos/SOM/cats_wide'
-# This is just an example of wide field data file you can use (warning, you will have to do some selection on it)
-#catname = '/project/projectdirs/des/www/y3_cats/Y3_mastercat___UNBLIND___final_v1.1_12_22_20.h5'
+output_path = '/global/cscratch1/sd/acampos/SOM/cats_wide'
 catname = '/global/cscratch1/sd/acampos/sompz_data/Y3_mastercat_03_31_20.h5'
 
 with h5py.File(catname,'r') as f:
@@ -33,7 +31,7 @@ indices = np.random.choice(fluxes_d.shape[0], size=nTrain, replace=False)
 hh = ns.hFunc(nTrain, sigma=(30, 1))
 metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 
-# Now training the SOM (currently using a 48x48 SOM, but you can change it)
+# Now training the SOM
 som = ns.NoiseSOM(metric, fluxes_d[indices, :], fluxerrs_d[indices, :],
                   learning=hh,
                   shape=(32, 32),
@@ -42,4 +40,4 @@ som = ns.NoiseSOM(metric, fluxes_d[indices, :], fluxerrs_d[indices, :],
                   minError=0.02)
 
 # And save the resultant weight matrix
-np.save("%s/som_wide_32_32_1e7.npy" % path_cats, som.weights)
+np.save(f'{output_path}/som_wide_32_32_1e7.npy', som.weights)
