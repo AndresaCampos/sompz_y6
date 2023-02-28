@@ -2,12 +2,9 @@ import pickle
 import numpy as np
 import NoiseSOM as ns
 
-path_cats = '/global/cscratch1/sd/acampos/SOM/cats_sompz'
-#'your/favorite/path/here/'
-# This is just an example of deep field data file you can use (warning, you will have to do some selection on it)
-# deep_file = '/global/cscratch1/sd/aamon/deep_ugriz.mof02_sn.jhk.ff04_c.jhk.ff02_052020_realerrors_May20calib.pkl'
+output_path = '/global/cscratch1/sd/acampos/SOM/cats_sompz'
 deep_file = '/global/cscratch1/sd/acampos/sompz_data/v0.50/deep_balrog.pkl'
-# deep_file = '/global/cscratch1/sd/acampos/SOM/deep_balrog_mocked.pkl'
+
 deep_data = pickle.load(open(deep_file, 'rb'), encoding='latin1')
 len_deep = len(deep_data['BDF_FLUX_DERED_CALIB_U'])
 
@@ -30,7 +27,7 @@ indices = np.random.choice(fluxes_d.shape[0], size=nTrain, replace=False)
 hh = ns.hFunc(nTrain, sigma=(30, 1))
 metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 
-# Now training the SOM (currently using a 48x48 SOM, but you can change it)
+# Now training the SOM 
 som = ns.NoiseSOM(metric, fluxes_d[indices, :], fluxerrs_d[indices, :],
                   learning=hh,
                   shape=(64, 64),
@@ -39,4 +36,4 @@ som = ns.NoiseSOM(metric, fluxes_d[indices, :], fluxerrs_d[indices, :],
                   minError=0.02)
 
 # And save the resultant weight matrix
-np.save("%s/som_deep_64_64.npy" % path_cats, som.weights)
+np.save(f'{output_path}/som_deep_64_64.npy', som.weights)
