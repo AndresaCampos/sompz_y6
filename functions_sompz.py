@@ -1,65 +1,54 @@
 import numpy as np
-import pickle
-import matplotlib.pyplot as plt
-import pandas as pd
-from scipy.signal import savgol_filter
-colors = ['k', 'teal', 'orange', 'powderblue','tomato'] 
-import matplotlib.pyplot as plt             
-from astropy.coordinates import SkyCoord
-from astropy import units as u
-import healpy as hp
-import h5py
-import astropy.io.fits as fits
-import twopoint
-from scipy.stats import norm
-import twopoint
-import scipy.interpolate as interp
-from scipy.signal import savgol_filter
 import fitsio
-from scipy.stats import norm
 import twopoint
+import matplotlib.pyplot as plt
 import scipy.interpolate as interp
 from scipy.signal import savgol_filter
-import matplotlib.pyplot as plt
+
+colors = ['k', 'teal', 'orange', 'powderblue', 'tomato']
 
 
 def flux2mag(flux, zero_pt=30):
-    '''Converts fluxes to Magnitudes'''
+    """Converts fluxes to Magnitudes"""
     return zero_pt - 2.5 * np.log10(flux)
 
-def smooth_response_weight(snr, size_ratio,file):
-    snmin=10
-    snmax=300
-    sizemin=0.5
-    sizemax=5
-    steps=20
+
+def smooth_response_weight(snr, size_ratio, file):
+    snmin = 10
+    snmax = 300
+    sizemin = 0.5
+    sizemax = 5
+    steps = 20
     r = np.genfromtxt(file)
-    def assign_loggrid( x, y, xmin, xmax, xsteps, ymin, ymax, ysteps):
+
+    def assign_loggrid(x, y, xmin, xmax, xsteps, ymin, ymax, ysteps):
         # return x and y indices of data (x,y) on a log-spaced grid that runs from [xy]min to [xy]max in [xy]steps
         x = np.maximum(x, xmin)
         x = np.minimum(x, xmax)
         y = np.maximum(y, ymin)
         y = np.minimum(y, ymax)
-        logstepx = np.log10(xmax/xmin)/xsteps
-        logstepy = np.log10(ymax/ymin)/ysteps
-        indexx = (np.log10(x/xmin)/logstepx).astype(int)
-        indexy = (np.log10(y/ymin)/logstepy).astype(int)
-        indexx = np.minimum(indexx, xsteps-1)
-        indexy = np.minimum(indexy, ysteps-1)
-        return indexx,indexy
+        logstepx = np.log10(xmax / xmin) / xsteps
+        logstepy = np.log10(ymax / ymin) / ysteps
+        indexx = (np.log10(x / xmin) / logstepx).astype(int)
+        indexy = (np.log10(y / ymin) / logstepy).astype(int)
+        indexx = np.minimum(indexx, xsteps - 1)
+        indexy = np.minimum(indexy, ysteps - 1)
+        return indexx, indexy
+
     def apply_loggrid(x, y, grid, xmin=snmin, xmax=snmax, xsteps=steps, ymin=sizemin, ymax=sizemax, ysteps=steps):
-        indexx,indexy = assign_loggrid(x, y, xmin, xmax, xsteps, ymin, ymax, ysteps)
+        indexx, indexy = assign_loggrid(x, y, xmin, xmax, xsteps, ymin, ymax, ysteps)
         res = np.zeros(len(x))
-        res = grid[indexx,indexy]
+        res = grid[indexx, indexy]
         return res
 
     smoothresponse = apply_loggrid(snr, size_ratio, r)
     return smoothresponse
 
+
 def calculate_weigths(smooth_response_file, snr, size_ratio, injection_counts, unsheared_weight, data_len):
-    smooth_response=smooth_response_weight(snr, size_ratio, smooth_response_file)
+    smooth_response = smooth_response_weight(snr, size_ratio, smooth_response_file)
     w = np.ones(data_len)
-    w *= smooth_response/2
+    w *= smooth_response / 2
     w /= injection_counts
     w *= unsheared_weight
     return w
@@ -80,9 +69,10 @@ def get_cell_weights_wide(data, overlap_weighted_pchat, cell_key='cell_wide', fo
     cells        :  The names of the cells
     cell_weights :  The fractions of the cells
     """
-    if force_assignment:
-        data[cell_key] = self.assign_wide(data, **kwargs)
+    # if force_assignment:
+    #     data[cell_key] = self.assign_wide(data, **kwargs)
     return get_cell_weights(data, overlap_weighted_pchat, cell_key)
+
 
 def get_cell_weights(data, overlap_weighted, key):
     """Given data, get cell weights and indices
@@ -98,7 +88,7 @@ def get_cell_weights(data, overlap_weighted, key):
     cells :         The names of the cells
     cell_weights :  The fractions of the cells
     """
-    if(overlap_weighted):
+    if overlap_weighted:
         cws = data.groupby(key)['overlap_weight'].sum()
     else:
         cws = data.groupby(key).size()
@@ -110,7 +100,8 @@ def get_cell_weights(data, overlap_weighted, key):
     return cells, cell_weights
 
 
-def redshift_distributions_wide(data, overlap_weighted_pchat, overlap_weighted_pzc, bins, pcchat, tomo_bins={}, key='Z', force_assignment=True, interpolate_kwargs={}, **kwargs):
+def redshift_distributions_wide(data, overlap_weighted_pchat, overlap_weighted_pzc, bins, pcchat, tomo_bins={}, key='Z',
+                                force_assignment=True, interpolate_kwargs={}, **kwargs):
     """Returns redshift distribution for sample
 
     Parameters
@@ -136,14 +127,18 @@ def redshift_distributions_wide(data, overlap_weighted_pchat, overlap_weighted_p
 
     """
     if len(tomo_bins) == 0:
-        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat=overlap_weighted_pchat, force_assignment=force_assignment, **kwargs)
+        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat=overlap_weighted_pchat,
+                                                    force_assignment=force_assignment, **kwargs)
         if cells.size == 0:
             hist = np.zeros(len(bins) - 1)
         else:
-            hist = histogram(data, key=key, cells=cells, cell_weights=cell_weights, overlap_weighted_pzc=overlap_weighted_pzc, bins=bins, interpolate_kwargs=interpolate_kwargs)
+            hist = histogram(data, key=key, cells=cells, cell_weights=cell_weights,
+                             overlap_weighted_pzc=overlap_weighted_pzc, bins=bins,
+                             interpolate_kwargs=interpolate_kwargs)
         return hist
     else:
-        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat, force_assignment=force_assignment, **kwargs)
+        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat, force_assignment=force_assignment,
+                                                    **kwargs)
         cellsort = np.argsort(cells)
         cells = cells[cellsort]
         cell_weights = cell_weights[cellsort]
@@ -151,18 +146,23 @@ def redshift_distributions_wide(data, overlap_weighted_pchat, overlap_weighted_p
         # break up hists into the different bins
         hists = []
         for tomo_key in tomo_bins:
-            cells_use     = tomo_bins[tomo_key][:,0]
-            cells_binweights = tomo_bins[tomo_key][:,1]
-            cells_conds   = np.searchsorted(cells, cells_use,side='left')
+            cells_use = tomo_bins[tomo_key][:, 0]
+            cells_binweights = tomo_bins[tomo_key][:, 1]
+            cells_conds = np.searchsorted(cells, cells_use, side='left')
             if len(cells_conds) == 0:
                 hist = np.zeros(len(bins) - 1)
             else:
-                hist = histogram(data, key=key, cells=cells[cells_conds], cell_weights=cell_weights[cells_conds]*cells_binweights, pcchat = pcchat, overlap_weighted_pzc=overlap_weighted_pzc, bins=bins, interpolate_kwargs=interpolate_kwargs)
+                hist = histogram(data, key=key, cells=cells[cells_conds],
+                                 cell_weights=cell_weights[cells_conds] * cells_binweights, pcchat=pcchat,
+                                 overlap_weighted_pzc=overlap_weighted_pzc, bins=bins,
+                                 interpolate_kwargs=interpolate_kwargs)
             hists.append(hist)
         hists = np.array(hists)
         return hists
-    
-def histogram(data, key, cells, cell_weights, pcchat, overlap_weighted_pzc,deep_som_size = 64*64, bins=None, individual_chat=False, interpolate_kwargs={}):
+
+
+def histogram(data, key, cells, cell_weights, pcchat, overlap_weighted_pzc, deep_som_size=64 * 64, bins=None,
+              individual_chat=False, interpolate_kwargs={}):
     """Return histogram from values that live in specified wide cells by querying deep cells that contribute
 
     Parameters
@@ -186,8 +186,9 @@ def histogram(data, key, cells, cell_weights, pcchat, overlap_weighted_pzc,deep_
     """
     # get sample, p(z|c)
     all_cells = np.arange(deep_som_size)
-    hists_deep = get_deep_histograms(data, key=key, cells=all_cells, overlap_weighted_pzc=overlap_weighted_pzc, bins=bins, interpolate_kwargs=interpolate_kwargs)
-    if individual_chat: # then compute p(z|chat) for each individual cell in cells and return histograms
+    hists_deep = get_deep_histograms(data, key=key, cells=all_cells, overlap_weighted_pzc=overlap_weighted_pzc,
+                                     bins=bins, interpolate_kwargs=interpolate_kwargs)
+    if individual_chat:  # then compute p(z|chat) for each individual cell in cells and return histograms
         hists = []
         for i, (cell, cell_weight) in enumerate(zip(cells, cell_weights)):
             # p(c|chat,s)p(chat|s) = p(c,chat|s)
@@ -204,7 +205,7 @@ def histogram(data, key, cells, cell_weights, pcchat, overlap_weighted_pzc,deep_
                 hist = hist / normalization
             hists.append(hist)
         return hists
-    else: # compute p(z|{chat}) and return histogram
+    else:  # compute p(z|{chat}) and return histogram
         # p(c|chat,s)p(chat|s) = p(c,chat|s)
         possible_weights = pcchat[:, cells] * cell_weights[None]  # (n_deep_cells, n_cells)
         # sum_chat p(c,chat|s) = p(c|s)
@@ -218,8 +219,10 @@ def histogram(data, key, cells, cell_weights, pcchat, overlap_weighted_pzc,deep_
         if normalization != 0:
             hist = hist / normalization
         return hist
-    
-def get_deep_histograms(data, key, cells, overlap_weighted_pzc, bins,cosmos, overlap_key= 'overlap_weight',deep_som_size = 64*64, deep_map_shape = (64*64, ), interpolate_kwargs={}):
+
+
+def get_deep_histograms(data, key, cells, overlap_weighted_pzc, bins, cosmos, overlap_key='overlap_weight',
+                        deep_som_size=64 * 64, deep_map_shape=(64 * 64,), interpolate_kwargs={}):
     """Return individual deep histograms for each cell. Can interpolate for empty cells.
 
     Parameters
@@ -249,20 +252,22 @@ def get_deep_histograms(data, key, cells, overlap_weighted_pzc, bins,cosmos, ove
     missing_cells = []
     populated_cells = []
     for ci, c in enumerate(cells):
-        try:    
+        try:
             df = cosmos.groupby('cell_deep').get_group(c)
             if type(key) is str:
                 z = df[key].values
-                if(overlap_weighted_pzc==True):
-                    #print("WARNING: You are using a deprecated point estimate Z. No overlap weighting enabled. You're on your own now.")#suppress
+                if overlap_weighted_pzc:
+                    # print("WARNING: You are using a deprecated point estimate Z. No overlap weighting enabled.
+                    # You're on your own now.")#suppress
                     weights = df[overlap_key].values
                 else:
                     weights = np.ones(len(z))
-                hist = np.histogram(z, bins, weights=weights, density=True)[0] #make weighted histogram by overlap weights
+                hist = np.histogram(z, bins, weights=weights, density=True)[
+                    0]  # make weighted histogram by overlap weights
                 populated_cells.append([ci, c])
             elif type(key) is list:
                 # use full p(z)
-                assert(bins is not None)
+                assert (bins is not None)
                 hist = histogram_from_fullpz(df, key, overlap_weighted=overlap_weighted_pzc, bin_edges=bins)
             hists.append(hist)
         except KeyError as e:
@@ -281,38 +286,42 @@ def get_deep_histograms(data, key, cells, overlap_weighted_pzc, bins,cosmos, ove
                 continue
 
             central_index = np.zeros(len(deep_map_shape), dtype=int)
-            unravel_index(c, deep_map_shape, central_index)  # fills central_index
+            # unravel_index(c, deep_map_shape, central_index)  # fills central_index
             cND = np.zeros(len(deep_map_shape), dtype=int)
             weight_map = np.zeros(deep_som_size)
-            gaussian_rbf(weight_map, central_index, cND, deep_map_shape, **interpolate_kwargs)  # fills weight_map
-            hists[ci] =  np.sum(hists[hist_conds] * (weight_map[hist_conds] / weight_map[hist_conds].sum())[:, None], axis=0)
+            # gaussian_rbf(weight_map, central_index, cND, deep_map_shape, **interpolate_kwargs)  # fills weight_map
+            hists[ci] = np.sum(hists[hist_conds] * (weight_map[hist_conds] / weight_map[hist_conds].sum())[:, None],
+                               axis=0)
 
         # purge hists back to the ones we care about
         hists = hists[cells_keep]
 
     return hists
 
-def histogram_from_fullpz(df, key, overlap_weighted, bin_edges, full_pz_end = 6.00, full_pz_npts=601):
-    '''Preserve bins from Laigle'''
+
+def histogram_from_fullpz(df, key, overlap_weighted, bin_edges, full_pz_end=6.00, full_pz_npts=601):
+    """Preserve bins from Laigle"""
     dz_laigle = full_pz_end / (full_pz_npts - 1)
-    condition = np.sum(~np.equal(bin_edges, np.arange(0 - dz_laigle/2.,
-                                  full_pz_end + dz_laigle,
-                                  dz_laigle)))
+    condition = np.sum(~np.equal(bin_edges, np.arange(0 - dz_laigle / 2.,
+                                                      full_pz_end + dz_laigle,
+                                                      dz_laigle)))
     assert condition == 0
     # bin_edges: [-0.005, 0.005], (0.005, 0.015], ... (5.995, 6.005]
 
     single_cell_hists = np.zeros((len(df), len(key)))
 
     overlap_weights = np.ones(len(df))
-    if(overlap_weighted):
+    if overlap_weighted:
         overlap_weights = df['overlap_weight'].values
 
-    single_cell_hists[:,:] = df[key].values
+    single_cell_hists[:, :] = df[key].values
 
     # normalize sompz p(z) to have area 1
     dz = 0.01
     area = np.sum(single_cell_hists, axis=1) * dz
-    area[area == 0] = 1 # some galaxies have pz with only one non-zero point. set these galaxies' histograms to have area 1
+    area[
+        area == 0] = 1  # some galaxies have pz with only one non-zero point. set these galaxies' histograms to have
+    # area 1
     area = area.reshape(area.shape[0], 1)
     single_cell_hists = single_cell_hists / area
 
@@ -328,10 +337,11 @@ def histogram_from_fullpz(df, key, overlap_weighted, bin_edges, full_pz_end = 6.
 
     return hist
 
-def plot_nz(hists, zbins, outfile, xlimits=(0,2), ylimits=(0,3.25)):
-    plt.figure(figsize=(16.,9.))
+
+def plot_nz(hists, zbins, outfile, xlimits=(0, 2), ylimits=(0, 3.25)):
+    plt.figure(figsize=(16., 9.))
     for i in range(len(hists)):
-        plt.plot((zbins[1:] + zbins[:-1])/2., hists[i], label='bin ' + str(i))
+        plt.plot((zbins[1:] + zbins[:-1]) / 2., hists[i], label='bin ' + str(i))
     plt.xlim(xlimits)
     plt.ylim(ylimits)
     plt.xlabel(r'$z$')
@@ -340,9 +350,10 @@ def plot_nz(hists, zbins, outfile, xlimits=(0,2), ylimits=(0,3.25)):
     plt.title('n(z)')
     plt.savefig(outfile)
     plt.close()
-       
-    
-def nz_bin_conditioned(wfdata, cosmos, overlap_weighted_pchat, overlap_weighted_pzc, tomo_cells, zbins, cell_wide_key='cell_wide', zkey='Z'):
+
+
+def nz_bin_conditioned(wfdata, cosmos, overlap_weighted_pchat, overlap_weighted_pzc, tomo_cells, zbins, pcchat,
+                       cell_wide_key='cell_wide', zkey='Z'):
     """ Function to obtain p(z|bin,s): the redshift distribution of a tomographic bin
     including the tomographic selection effect in p(z|chat).
 
@@ -364,73 +375,77 @@ def nz_bin_conditioned(wfdata, cosmos, overlap_weighted_pchat, overlap_weighted_
         #cell_weights : How much we weight each wide cell. This is the array p(c | sample)
     """
     print('full redshift sample:', len(cosmos))
-    #print('cell_wide_key: ', cell_wide_key)
-    #print('self.data[cell_wide_key].shape', self.data[cell_wide_key].shape)
-    #print('tomo_cells', tomo_cells)
-    bl=len(cosmos[cosmos['cell_wide_unsheared'].isin(tomo_cells[:,0])])
+    # print('cell_wide_key: ', cell_wide_key)
+    # print('self.data[cell_wide_key].shape', self.data[cell_wide_key].shape)
+    # print('tomo_cells', tomo_cells)
+    bl = len(cosmos[cosmos['cell_wide_unsheared'].isin(tomo_cells[:, 0])])
 
     print('subset of reshift sample in bin:', bl)
 
-    f=1.e9 # how much more we weight the redshift of a galaxy that's in the right bin
+    f = 1.e9  # how much more we weight the redshift of a galaxy that's in the right bin
 
-    stored_overlap_weight = cosmos['overlap_weight'].copy() # save for later
+    stored_overlap_weight = cosmos['overlap_weight'].copy()  # save for later
 
-    if(overlap_weighted_pzc == False): # we need to use it, but you don't want to
+    if (overlap_weighted_pzc == False):  # we need to use it, but you don't want to
         cosmos['overlap_weight'] = np.ones(len(cosmos))
 
-    cosmos.loc[cosmos['cell_wide_unsheared'].isin(tomo_cells[:,0]),'overlap_weight'] *= f
+    cosmos.loc[cosmos['cell_wide_unsheared'].isin(tomo_cells[:, 0]), 'overlap_weight'] *= f
 
-    nz = redshift_distributions_wide(data=wfdata, overlap_weighted_pchat=overlap_weighted_pchat, overlap_weighted_pzc=True,
-                                     bins=zbins, pcchat = pcchat, tomo_bins={"mybin" : tomo_cells}, key=zkey, force_assignment=False, cell_key=cell_wide_key)
+    nz = redshift_distributions_wide(data=wfdata, overlap_weighted_pchat=overlap_weighted_pchat,
+                                     overlap_weighted_pzc=True,
+                                     bins=zbins, pcchat=pcchat, tomo_bins={"mybin": tomo_cells}, key=zkey,
+                                     force_assignment=False, cell_key=cell_wide_key)
 
-    cosmos['overlap_weight'] = stored_overlap_weight.copy() # open jar
+    cosmos['overlap_weight'] = stored_overlap_weight.copy()  # open jar
 
     return nz[0]
-    
-    
+
+
 def plot_nz_overlap(list_of_nz, list_of_labels, outdir):
     colors = 'rgbcmyk'
-    plt.figure(figsize=(16,9))
+    plt.figure(figsize=(16, 9))
 
     ### nz_all is an array: (n_tomobins, n_zbins)
     for j, (nz_all, label) in enumerate(zip(list_of_nz, list_of_labels)):
         nz_all_overlap_somM = np.einsum('mz,nz->mn', nz_all, nz_all)
-        nz_all_overlap_var_somM = np.einsum('m,n->mn', np.sqrt(np.diag(nz_all_overlap_somM)), np.sqrt(np.diag(nz_all_overlap_somM)))
+        nz_all_overlap_var_somM = np.einsum('m,n->mn', np.sqrt(np.diag(nz_all_overlap_somM)),
+                                            np.sqrt(np.diag(nz_all_overlap_somM)))
         nz_all_overlap_somM /= nz_all_overlap_var_somM
 
         ### Plot the overlap matrix as a series of 4 lines showing the columns of the matrix.
-        [plt.plot(range(1+i,5), x[i:], 's--', color=colors[j]) for i, x in enumerate(nz_all_overlap_somM)]
-        [plt.plot(range(1+i,5), x[i:], 's--', color=colors[j]) for i, x in enumerate(nz_all_overlap_somM)]
+        [plt.plot(range(1 + i, 5), x[i:], 's--', color=colors[j]) for i, x in enumerate(nz_all_overlap_somM)]
+        [plt.plot(range(1 + i, 5), x[i:], 's--', color=colors[j]) for i, x in enumerate(nz_all_overlap_somM)]
         plt.ylabel('N(z) Overlap')
         plt.legend(loc=0, fontsize=15)
-        plt.xticks(np.arange(1,5,1))
+        plt.xticks(np.arange(1, 5, 1))
     plt.savefig(outdir + 'Y3_nz_overlap_plot.png');
     plt.close()
     return
 
-def pileup(hists,zs,zmeans,z_pileup,dz,weight,nbins):
+
+def pileup(hists, zs, zmeans, z_pileup, dz, weight, nbins):
     """Cuts off z, zmean and Nz at a pileup-z, and stacks tail on pileup-z and renormalises"""
     ## Pile up very high z in last bin
     import copy
-    #print(hists)
-    hists_piled=copy.copy(hists)
-    zbegin=int(z_pileup/dz)
-    print("Dz, new-end-z,weight: ", dz, z_pileup,weight)
+    # print(hists)
+    hists_piled = copy.copy(hists)
+    zbegin = int(z_pileup / dz)
+    print("Dz, new-end-z,weight: ", dz, z_pileup, weight)
     for b in range(nbins):
-        s=np.sum(hists[b,zbegin:])
-        hists_piled[b,zbegin-1]+=s*weight
-        hists_piled[b,zbegin:]=0.
+        s = np.sum(hists[b, zbegin:])
+        hists_piled[b, zbegin - 1] += s * weight
+        hists_piled[b, zbegin:] = 0.
 
-    #print(hists_piled)
-    zs=zs[:zbegin+1]
-    zmeans_piled=zmeans[:zbegin]
-    hists_piled=hists_piled[:,:zbegin]
-    #print(hists_piled)
+    # print(hists_piled)
+    zs = zs[:zbegin + 1]
+    zmeans_piled = zmeans[:zbegin]
+    hists_piled = hists_piled[:, :zbegin]
+    # print(hists_piled)
 
     for b in range(nbins):
-        hists_piled[b,:]=hists_piled[b,:]/np.sum(hists_piled[b,:]*dz)
+        hists_piled[b, :] = hists_piled[b, :] / np.sum(hists_piled[b, :] * dz)
 
-    #print(hists_piled)
+    # print(hists_piled)
     return zs, zmeans_piled, hists_piled
 
 
@@ -454,9 +469,9 @@ def redshift_histograms_stats(hists_true, hists_estimated, bins, legend_estimate
             raise ValueError('hists_true must contain the same number of histograms as hists_estimated')
         if hists_true.shape[1] != hists_estimated.shape[1]:
             raise ValueError('hists_true must have the same number of bins as hists_estimated')
-        if hists_true.shape[1] != (bins.shape[0]-1):
+        if hists_true.shape[1] != (bins.shape[0] - 1):
             raise ValueError('the number of bins must correspond to the length of the histograms')
-        #Ignore the empty histogramms
+        # Ignore the empty histogramms
         non_zero_true = (hists_true.sum(axis=1) != 0)
         non_zero_estimated = (hists_estimated.sum(axis=1) != 0)
         hists_true = hists_true[non_zero_true * non_zero_estimated]
@@ -464,14 +479,14 @@ def redshift_histograms_stats(hists_true, hists_estimated, bins, legend_estimate
     elif hists_true.ndim == 1:
         if hists_true.shape[0] != hists_estimated.shape[0]:
             raise ValueError('hists_true must have the same number of bins as hists_estimated')
-        if hists_true.shape[0] != (bins.shape[0]-1):
+        if hists_true.shape[0] != (bins.shape[0] - 1):
             raise ValueError('the number of bins must correspond to the length of the histograms')
         hists_true = [hists_true]
         hists_estimated = [hists_estimated]
     else:
         raise ValueError('hists_true has not the correct dimension')
 
-    results = {'norm': [], 'mean': [], 'sigma': [], 'label': [], 'tomo' : []}
+    results = {'norm': [], 'mean': [], 'sigma': [], 'label': [], 'tomo': []}
 
     for tomo, (hist_true_deep, hist_deep) in enumerate(zip(hists_true, hists_estimated)):
         # color = 'C{0}'.format(tomo)
@@ -484,13 +499,16 @@ def redshift_histograms_stats(hists_true, hists_estimated, bins, legend_estimate
             results['tomo'].append(tomo)
     results = pd.DataFrame(results)
 
-    delta_mean_z = results[results['label']== 'true']['mean'].values -  results[results['label'] == legend_estimated]['mean'].values
-    delta_sigma_z = results[results['label']== 'true']['sigma'].values -  results[results['label'] == legend_estimated]['sigma'].values
-    deltas = pd.concat((pd.Series(delta_mean_z, name='delta <z>'), pd.Series(delta_sigma_z, name='delta sigma(z)')), axis=1)
+    delta_mean_z = results[results['label'] == 'true']['mean'].values - results[results['label'] == legend_estimated][
+        'mean'].values
+    delta_sigma_z = results[results['label'] == 'true']['sigma'].values - results[results['label'] == legend_estimated][
+        'sigma'].values
+    deltas = pd.concat((pd.Series(delta_mean_z, name='delta <z>'), pd.Series(delta_sigma_z, name='delta sigma(z)')),
+                       axis=1)
 
     return results, deltas
 
-    
+
 def one_point_statistics(y, bins):
     """Given a histogram and its bins return summary statistics
 
@@ -509,16 +527,17 @@ def one_point_statistics(y, bins):
     mean = np.trapz(x * y, x=x, dx=dx) / normalization
     var = np.trapz((x - mean) ** 2 * y, x=x, dx=dx) / normalization
     sigma = np.sqrt(var)
-    return normalization, mean, sigma        
-    
-    
-def plot_redshift_histograms(hists_true, hists_estimated, bins, title=None, legend_estimated='estimated', legend_true='true', max_pz=3.5, max_z=2.0):
+    return normalization, mean, sigma
+
+
+def plot_redshift_histograms(hists_true, hists_estimated, bins, title=None, legend_estimated='estimated',
+                             legend_true='true', max_pz=3.5, max_z=2.0):
     """Plot the set of (true, estimated) histograms in each tomographic bin
 
     Parameters
     ----------
-    hists_true :       An array of normalized histogramms for the different tomographic bins (the truth)
-    hists_estimated :  An array of normalized histogramms for the different tomographic bins (the estimation)
+    hists_true :       An array of normalized histograms for the different tomographic bins (the truth)
+    hists_estimated :  An array of normalized histograms for the different tomographic bins (the estimation)
     bins :             The bins corresponding to hists_true and hists_estimated
     title :            The title of the figure
     legend_estimated:  The legend of the estimated histogram
@@ -533,9 +552,9 @@ def plot_redshift_histograms(hists_true, hists_estimated, bins, title=None, lege
             raise ValueError('hists_true must contain the same number of histograms as hists_estimated')
         if hists_true.shape[1] != hists_estimated.shape[1]:
             raise ValueError('hists_true must have the same number of bins as hists_estimated')
-        if hists_true.shape[1] != (bins.shape[0]-1):
+        if hists_true.shape[1] != (bins.shape[0] - 1):
             raise ValueError('the number of bins must correspond to the length of the histograms')
-        #Ignore the empty histogramms
+        # Ignore the empty histograms
         non_zero_true = (hists_true.sum(axis=1) != 0)
         non_zero_estimated = (hists_estimated.sum(axis=1) != 0)
         hists_true = hists_true[non_zero_true * non_zero_estimated]
@@ -543,7 +562,7 @@ def plot_redshift_histograms(hists_true, hists_estimated, bins, title=None, lege
     elif hists_true.ndim == 1:
         if hists_true.shape[0] != hists_estimated.shape[0]:
             raise ValueError('hists_true must have the same number of bins as hists_estimated')
-        if hists_true.shape[0] != (bins.shape[0]-1):
+        if hists_true.shape[0] != (bins.shape[0] - 1):
             raise ValueError('the number of bins must correspond to the length of the histograms')
         hists_true = [hists_true]
         hists_estimated = [hists_estimated]
@@ -564,7 +583,7 @@ def plot_redshift_histograms(hists_true, hists_estimated, bins, title=None, lege
             else:
                 plotlabel = None
             ax.plot(xtd, ytd, color=color, linestyle=linestyle, linewidth=2, label=plotlabel)
-            if label=='true':
+            if label == 'true':
                 ax.fill_between(xtd, 0, ytd, color=color, alpha=0.5, label=None)
     ax.set_xlabel('$z$', fontsize=20)
     ax.set_ylabel('$P(z)$', fontsize=20)
@@ -578,6 +597,7 @@ def plot_redshift_histograms(hists_true, hists_estimated, bins, title=None, lege
 
     return fig
 
+
 def get_mean_sigma(zmeans, hists):
     """Returns means and sigmas for each tomo bin
     """
@@ -585,15 +605,15 @@ def get_mean_sigma(zmeans, hists):
     sigmas = np.zeros(4)
 
     for i in range(4):
-        means[i] = np.sum(hists[i]*zmeans)/np.sum(hists[i])
-        sigmas[i] = np.sqrt(np.sum(hists[i]*(zmeans-means[i])**2)/np.sum(hists[i]))
+        means[i] = np.sum(hists[i] * zmeans) / np.sum(hists[i])
+        sigmas[i] = np.sqrt(np.sum(hists[i] * (zmeans - means[i]) ** 2) / np.sum(hists[i]))
 
-    return means,sigmas
-    
-    
+    return means, sigmas
+
+
 def histogramize(bins, y):
-    '''Return set of points that make it look like a histogram.
-    bins is assumed to be one longer than y. You then just "plot" these!'''
+    """Return set of points that make it look like a histogram.
+    bins is assumed to be one longer than y. You then just "plot" these!"""
     xhist = []
     yhist = []
     for i in range(len(y)):
@@ -637,58 +657,60 @@ def save_des_nz(hists, zbins, n_bins, outdir, run_name, suffix):
     print('write ' + nz_out)
     hdu.writeto(nz_out, overwrite=True)
     os.system('chmod a+r ' + nz_out)
-    
-def to2point(lastnz, templatef, runname,label,data_dir):
 
-    outfile=data_dir+'Y3_2pt_'+label+'_'+runname+'.fits'
 
-    #open-up the saved final fits
-    nz=fitsio.read(lastnz)
+def to2point(lastnz, templatef, runname, label, data_dir):
+    outfile = data_dir + 'Y3_2pt_' + label + '_' + runname + '.fits'
 
-    #open the template
-    oldnz=twopoint.TwoPointFile.from_fits(templatef)
+    # open-up the saved final fits
+    nz = fitsio.read(lastnz)
 
-    #puts the nzs into 2pt file
-    bins=['BIN1','BIN2','BIN3','BIN4']
-    for i,bin in enumerate(bins):
-        #print(oldnz.kernels[0].nzs[i])
+    # open the template
+    oldnz = twopoint.TwoPointFile.from_fits(templatef)
+
+    # puts the nzs into 2pt file
+    bins = ['BIN1', 'BIN2', 'BIN3', 'BIN4']
+    for i, bin in enumerate(bins):
+        # print(oldnz.kernels[0].nzs[i])
         oldnz.kernels[0].zlow = nz['Z_LOW']
         oldnz.kernels[0].z = nz['Z_MID']
         oldnz.kernels[0].zhigh = nz['Z_HIGH']
         oldnz.kernels[0].nzs[i] = nz[bin]
-        #print(oldnz.kernels[0].nzs[i])
-    oldnz.to_fits(outfile,clobber=True,overwrite=True)
+        # print(oldnz.kernels[0].nzs[i])
+    oldnz.to_fits(outfile, clobber=True, overwrite=True)
 
-def smooth(twoptfile, nzsmoothfile, runname,label,data_dir, oldnz):
 
-    outfilesmooth=data_dir+'Y3_2pt_'+label+'_'+runname+'_smooth.fits'
+def smooth(twoptfile, nzsmoothfile, runname, label, data_dir, oldnz):
+    outfilesmooth = data_dir + 'Y3_2pt_' + label + '_' + runname + '_smooth.fits'
 
-    #Troxel's smoothing adapted
-    nosmooth=twopoint.TwoPointFile.from_fits(twoptfile)
+    # Troxel's smoothing adapted
+    nosmooth = twopoint.TwoPointFile.from_fits(twoptfile)
     z = nosmooth.kernels[0].z
     for i in range(4):
-        b = savgol_filter(nosmooth.kernels[0].nzs[i],25,2)
-        f = interp.interp1d(nosmooth.kernels[0].z,b,bounds_error=False,fill_value=0.)
+        b = savgol_filter(nosmooth.kernels[0].nzs[i], 25, 2)
+        f = interp.interp1d(nosmooth.kernels[0].z, b, bounds_error=False, fill_value=0.)
         nosmooth.kernels[0].nzs[i] = f(z)
-    nosmooth.to_fits(outfilesmooth,clobber=True,overwrite=True)
-    np.savetxt(nzsmoothfile,np.vstack((nosmooth.kernels[0].zlow,nosmooth.kernels[0].nzs[0],
-                                       nosmooth.kernels[0].nzs[1],nosmooth.kernels[0].nzs[2],nosmooth.kernels[0].nzs[3])).T)
+    nosmooth.to_fits(outfilesmooth, clobber=True, overwrite=True)
+    np.savetxt(nzsmoothfile, np.vstack((nosmooth.kernels[0].zlow, nosmooth.kernels[0].nzs[0],
+                                        nosmooth.kernels[0].nzs[1], nosmooth.kernels[0].nzs[2],
+                                        nosmooth.kernels[0].nzs[3])).T)
 
-    oldnz=twopoint.TwoPointFile.from_fits(twoptfile)
+    oldnz = twopoint.TwoPointFile.from_fits(twoptfile)
     means_smooth, sigmas_smooth = get_mean_sigma(nosmooth.kernels[0].z, nosmooth.kernels[0].nzs)
     means_bc_piled, sigmas_bc_piled = get_mean_sigma(oldnz.kernels[0].z, oldnz.kernels[0].nzs)
 
-    plt.figure(figsize=(12.,8.))
-    colors=['blue','orange','green','red']
+    plt.figure(figsize=(12., 8.))
+    colors = ['blue', 'orange', 'green', 'red']
     for i in range(4):
-        plt.fill_between(oldnz.kernels[0].z, oldnz.kernels[0].nzs[i], color= colors[i],alpha=0.3)#,label="fiducial")
-        plt.axvline(means_smooth[i], linestyle='-.', color= colors[i],label=str(i)+' %.3f'%(means_smooth[i]))
-        plt.plot(nosmooth.kernels[0].z, nosmooth.kernels[0].nzs[i], color= colors[i])#,label="smooth")
-        plt.axvline(means_bc_piled[i], linestyle='-', color= colors[i],label=str(i)+' smooth: %.3f'%(means_bc_piled[i]))
+        plt.fill_between(oldnz.kernels[0].z, oldnz.kernels[0].nzs[i], color=colors[i], alpha=0.3)  # ,label="fiducial")
+        plt.axvline(means_smooth[i], linestyle='-.', color=colors[i], label=str(i) + ' %.3f' % (means_smooth[i]))
+        plt.plot(nosmooth.kernels[0].z, nosmooth.kernels[0].nzs[i], color=colors[i])  # ,label="smooth")
+        plt.axvline(means_bc_piled[i], linestyle='-', color=colors[i],
+                    label=str(i) + ' smooth: %.3f' % (means_bc_piled[i]))
     plt.xlabel(r'$z$', fontsize=16)
     plt.ylabel(r'$p(z)$', fontsize=16)
-    plt.xlim(0,2)
-    plt.ylim(-0.5,4)
+    plt.xlim(0, 2)
+    plt.ylim(-0.5, 4)
     plt.legend(loc='upper right', fontsize=16)
     plt.title('Wide n(z) for Y3 SOM', fontsize=16)
-    plt.savefig(data_dir+'Y3_smooth_wide_nz_faint.png')    
+    plt.savefig(data_dir + 'Y3_smooth_wide_nz_faint.png')

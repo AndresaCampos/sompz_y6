@@ -3,3 +3,6 @@ pandas
 pickle
 matplotlib
 scipy
+fitsio
+twopoint
+
