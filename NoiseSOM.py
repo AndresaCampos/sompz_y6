@@ -6,7 +6,7 @@ from matplotlib import pyplot as pl
 # import cmasher as cmr
 
 class NoiseSOM:
-    '''Class to build a SOM that deals with noisy data.'''
+    """Class to build a SOM that deals with noisy data."""
 
     def __init__(self, 
                  metric, 
@@ -19,7 +19,7 @@ class NoiseSOM:
                  logF=True,
                  initialize='uniform',
                  gridOverDimensions=None):
-        '''
+        """
         metric: a class to define the distance metric and shifting rules.
         data, errors: arrays of shape (M,N) giving the values and errors, respectively,
                       for each of the N features of M training points.  If
@@ -42,7 +42,7 @@ class NoiseSOM:
                  dimensions of the SOM, then the weights will be initialized to be
                  in a (log) grid over these dimensions of feature space
                  (and retain other initialization method in other dimensions).
-        '''
+        """
 
         # save parameters
         self.metric = metric
@@ -163,8 +163,7 @@ class NoiseSOM:
             bmu = self.getBMU(dd, err)
 
             # Get the learning function values
-            fLearn = learning(xy, shape=self.shape, wrap=self.wrap, \
-                              bmu=bmu, iteration=i)
+            fLearn = learning(xy, shape=self.shape, wrap=self.wrap, bmu=bmu, iteration=i)
 
             # At this point mask to only cells that will learn something
             use = fLearn >= minLearn
@@ -177,25 +176,25 @@ class NoiseSOM:
         return
 
     def chisq(self, data, errors):
-        '''
+        """
         Return (flattened) array of -2 ln(probabilities) for each cell,
         i.e. distance-squared.
-        '''
+        """
 
         return self.metric(self.weights, data, errors)
 
     def getBMU(self, data, errors):
-        '''
+        """
         Assign a feature vector to a cell with maximum probability.
         Returns flattened index of BMU.
-        '''
+        """
         return np.argmin(self.chisq(data, errors))
 
     def classify(self, data, errors):
-        '''
+        """
         Return a vector of BMU's for each row of data.
         Also returns a vector of the distance^2 to each BMU.
-        '''
+        """
         # Break the inputs into chunks for speed
         blocksize = 10
         nPts = data.shape[0]
@@ -214,11 +213,11 @@ class NoiseSOM:
     def fuzzyProb(self, fluxes, invVars,
                   scale=None, sPenalty=None,
                   maxScale=False):
-        '''
-        Calculate the relative probability of obtaining the `fluxes` given the 
+        """
+        Calculate the relative probability of obtaining the `fluxes` given the
         SOM cell fluxes, assuming Gaussian errors on each feature with
         `invvar` as inverse variance of each feature.
-        
+
         Marginalize over the `scale` array of scaling factors of nodal fluxes,
         with `sPenalty` giving the -2 ln(p(s)) each scale value.
 
@@ -226,14 +225,14 @@ class NoiseSOM:
 
         if `scale` or `sPenalty` are `None`, then they are taken from the
         SOM metric.
-    
+
         If `maxScale` is True, then the probability of the best-fit scale factor
         is used (including its `sPenalty`), rather than marginalizing.
-    
+
         Returns an (nCells,nTargets) array giving relative p(flux | cell) under assumption
         of diagonal Gaussian errors on the fluxes.  Note these do *not* have
         common normalization across targets, only across cells for fixed target.
-        '''
+        """
         chunk = 256
         probs = np.zeros((self.weights.shape[0], fluxes.shape[0]), dtype=float)
         if scale is None:
@@ -266,9 +265,9 @@ class NoiseSOM:
 
 
 class hFunc:
-    '''
+    """
     An implementation of a SOM learning function as given by Speagle
-    '''
+    """
 
     def __init__(self, nTrain, a=(0.5, 0.1), sigma=(10., 1.)):
         self.nTrain = float(nTrain)
@@ -277,9 +276,9 @@ class hFunc:
         return
 
     def __call__(self, xy, shape, wrap, bmu, iteration):
-        '''
+        """
         Return array of learning weights (0<=wt<=1) for each cell
-        '''
+        """
         f = iteration / self.nTrain
         aFactor = 1. / ((1. - f) / self.a[0] + f / self.a[1])
         invS = ((1. - f) / self.sigma[0] + f / self.sigma[1]) ** 2
@@ -303,18 +302,18 @@ class hFunc:
 
 
 class AsinhMetric:
-    '''
+    """
     Class meeting the metric interface which does a good job
-    of being linear at low S/N, log at high S/N for data'''
+    of being linear at low S/N, log at high S/N for data"""
 
     def __init__(self, lnScaleSigma=0.4, lnScaleStep=0.02, maxSigma=3.):
-        '''Create a distance metric between scale-smeared cells and some features
+        """Create a distance metric between scale-smeared cells and some features
         lnScaleSigma: sigma of a Gaussian in ln(s), where s is an overall scale factor
             applied to the feature vector of a SOM cell, that will be marginalized
             over.  Enter <=0 to just use unit scale factor.
         maxSigma:  largest number of sigma to extend scale factor.
         lnScaleStep: step size in ln(scale) used when integrating over scale
-        '''
+        """
         if lnScaleSigma > 0.:
             # Create an array of scale factors and distance-sq to the
             # center of the fuzzy template
@@ -421,20 +420,20 @@ class AsinhMetric:
 
 
 class LinearMetric:
-    '''
-    Metric interface implementation for error-scaled Euclidean distances, 
+    """
+    Metric interface implementation for error-scaled Euclidean distances,
     e.g. Gaussian probabilities.
-    '''
+    """
 
     def __init__(self, noise0=0, signalScale=None):
-        '''Create a distance metric between scale-smeared cells and some features
+        """Create a distance metric between scale-smeared cells and some features
         noise0: when a move is requested, each dimension's move will be suppressed
             by a factor noise^2/(noise0^2+noise^2) as a means of deweighting bad
             measurements.
         signalScale: if given, it should be an array over features giving range of
-            signals, and the move suppression for noise0 above will be 
+            signals, and the move suppression for noise0 above will be
             calculated using noise/signalScale in each feature dimension.
-        '''
+        """
         self.noise0 = noise0
         if signalScale is None:
             self.scale = None
@@ -488,7 +487,7 @@ class LinearMetric:
                 # Rescale noise levels by signal level
                 noise /= self.scale
             noise *= noise
-            factor = noise / ((noise0 * noise0) + noise)
+            factor = noise / ((self.noise0 * self.noise0) + noise)
             shift *= factor
 
         cells += shift
@@ -496,11 +495,11 @@ class LinearMetric:
 
 
 def readCOSMOS():
-    '''Function to read the COSMOS input files.
+    """Function to read the COSMOS input files.
     Returns arrays fluxes,errors,redshifts,counts giving for each unique object
     its ugrizJHK fluxes, flux errors, Laigle redshift, number of Balrog counts,
     and radec array.
-    '''
+    """
     # Read the master file.  Mag zeropoints are all 30.0
     cosmos = pandas.read_hdf('cosmos.hdf5', 'fluxes')
 
@@ -636,8 +635,8 @@ def somDomainColors(som):
 
 
 def plotSOMz(som, cells, zz, subsamp=1, figsize=(8, 8)):
-    '''Make 4-panel plot showing occupancy of SOM by a redshift sample and statistics
-       of redshift distribution in each cell.'''
+    """Make 4-panel plot showing occupancy of SOM by a redshift sample and statistics
+       of redshift distribution in each cell."""
     nbins = np.prod(som.shape)
     nn = np.histogram(cells, bins=nbins, range=(-0.5, nbins - 0.5))[0]
     zmean = np.histogram(cells, bins=nbins, range=(-0.5, nbins - 0.5), weights=zz[::subsamp])[0] / nn
