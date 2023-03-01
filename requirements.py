@@ -5,4 +5,5 @@ matplotlib
 scipy
 fitsio
 twopoint
+mpi4py
 
