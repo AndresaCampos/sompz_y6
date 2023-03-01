@@ -5,7 +5,7 @@ import NoiseSOM as ns
 # We load the same objects we used for training and we will find the SOM cell for each one, using 
 # the SOM we already trained. You could use different objects too, this is just for illustration. 
 
-path_cats = '/global/cscratch1/sd/acampos/SOM/cats'
+path_cats = 'your/favorite/path/here/'
 # This is just an example of deep field data file you can use (warning, you will have to do some selection on it)
 deep_file = '/global/cscratch1/sd/aamon/deep_ugriz.mof02_sn.jhk.ff04_c.jhk.ff02_052020_realerrors_May20calib.pkl'
 deep_data = pickle.load(open(deep_file, 'rb'), encoding='latin1')
