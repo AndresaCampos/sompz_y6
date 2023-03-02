@@ -1,6 +1,6 @@
 import pickle
 import numpy as np
-import NoiseSOM as ns
+from sompz import NoiseSOM as ns
 
 # We load the same objects we used for training and we will find the SOM cell for each one, using 
 # the SOM we already trained. You could use different objects too, this is just for illustration. 

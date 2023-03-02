@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from mpi4py import MPI
-import NoiseSOM as ns
+from sompz import NoiseSOM as ns
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
