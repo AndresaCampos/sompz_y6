@@ -13,6 +13,8 @@ data_type = 'balrog'
 shear = 'unsheared'
 path_out = f'/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3/{som_type}_{data_type}_230116'
 path_wide = '/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3'
+som_wide = 'som_wide_32_32_1e7.npy'
+som_dim = 32
 
 # This is just an example of wide field data file you can use
 catname = '/global/cscratch1/sd/acampos/sompz_data/v0.50_andresa/deep_balrog.pkl'
@@ -59,12 +61,12 @@ for i, band in enumerate(bands):
 nTrain = fluxes_d.shape[0]
 
 # Now, instead of training the SOM, we load the SOM we trained:
-som_weights = np.load(f'{path_wide}/som_wide_32_32_1e7.npy', allow_pickle=True)
+som_weights = np.load(f'{path_wide}/{som_wide}', allow_pickle=True)
 hh = ns.hFunc(nTrain, sigma=(30, 1))
 metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 som = ns.NoiseSOM(metric, None, None,
                   learning=hh,
-                  shape=(32, 32),
+                  shape=(som_dim, som_dim),
                   wrap=False, logF=True,
                   initialize=som_weights,
                   minError=0.02)
@@ -77,7 +79,7 @@ inds = np.array_split(np.arange(len(fluxes_d)), nsubsets)
 # This function checks whether you have already run that subset, and if not it runs the SOM classifier
 def assign_som(ind):
     print(f'Running rank {rank}, index {ind}')
-    filename = f'{path_out}/som_{som_type}_32x32_1e7_assign_{data_type}_{shear}_{rank}_subsample_{ind}.npz'
+    filename = f'{path_out}/{som_type}_{data_type}/som_{som_type}_32x32_1e7_assign_{data_type}_{rank}_subsample_{ind}.npz'
     if not os.path.exists(filename):
         print('Running')
         cells_test, _ = som.classify(fluxes_d[inds[ind]], fluxerrs_d[inds[ind]])

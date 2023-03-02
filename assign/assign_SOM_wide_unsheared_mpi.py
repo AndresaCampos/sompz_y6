@@ -12,6 +12,8 @@ som_type = 'wide'
 shear = 'unsheared'
 path_out = f'/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3/{som_type}_{shear}'
 path_wide = '/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3'
+som_wide = 'som_wide_32_32_1e7.npy'
+som_dim = 32
 
 # This is just an example of wide field data file you can use
 catname = '/global/cscratch1/sd/acampos/sompz_data/Y3_mastercat_03_31_20.h5'
@@ -59,12 +61,12 @@ for i, band in enumerate(bands):
 nTrain = fluxes_d.shape[0]
 
 # Now, instead of training the SOM, we load the SOM we trained:
-som_weights = np.load(f'{path_wide}/som_wide_32_32_1e7.npy', allow_pickle=True)
+som_weights = np.load(f'{path_wide}/{som_wide}', allow_pickle=True)
 hh = ns.hFunc(nTrain, sigma=(30, 1))
 metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 som = ns.NoiseSOM(metric, None, None,
                   learning=hh,
-                  shape=(32, 32),
+                  shape=(som_dim, som_dim),
                   wrap=False, logF=True,
                   initialize=som_weights,
                   minError=0.02)
