@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 import scipy.interpolate as interp
 from scipy.signal import savgol_filter
 
-colors = ['k', 'teal', 'orange', 'powderblue', 'tomato']
-
 
 def flux2mag(flux, zero_pt=30):
     """Converts fluxes to Magnitudes"""
@@ -45,7 +43,7 @@ def smooth_response_weight(snr, size_ratio, file):
     return smoothresponse
 
 
-def calculate_weigths(smooth_response_file, snr, size_ratio, injection_counts, unsheared_weight, data_len):
+def calculate_weights(smooth_response_file, snr, size_ratio, injection_counts, unsheared_weight, data_len):
     smooth_response = smooth_response_weight(snr, size_ratio, smooth_response_file)
     w = np.ones(data_len)
     w *= smooth_response / 2
@@ -54,24 +52,19 @@ def calculate_weigths(smooth_response_file, snr, size_ratio, injection_counts, u
     return w
 
 
-def get_cell_weights_wide(data, overlap_weighted_pchat, cell_key='cell_wide', force_assignment=False, **kwargs):
-    """Given data, get cell weights p(chat) and indices from wide SOM
+def calculate_pcchat(balrog_data, deep_som_size, wide_som_size):
+    pcchat_num = np.zeros((deep_som_size, wide_som_size))
+    np.add.at(pcchat_num,
+              [balrog_data['cell_deep'], balrog_data['cell_wide_unsheared']],
+              balrog_data['overlap_weight'])
 
-    Parameters
-    ----------
-    data             : Dataframe we extract parameters from
-    overlap_weighted_pchat : If True, use mean overlap weights of wide cells in p(chat)
-    cell_key         : Which key we are grabbing. Default: cell_wide
-    force_assignment : Calculate cell assignments. If False, then will use whatever value is in the cell_key field of data. Default: True
+    pcchat_denom = pcchat_num.sum(axis=0)
+    pcchat = pcchat_num / pcchat_denom[None]
 
-    Returns
-    -------
-    cells        :  The names of the cells
-    cell_weights :  The fractions of the cells
-    """
-    # if force_assignment:
-    #     data[cell_key] = self.assign_wide(data, **kwargs)
-    return get_cell_weights(data, overlap_weighted_pchat, cell_key)
+    # any nonfinite in pcchat are to be treated as 0 probability
+    pcchat = np.where(np.isfinite(pcchat), pcchat, 0)
+
+    return pcchat
 
 
 def get_cell_weights(data, overlap_weighted, key):
@@ -100,133 +93,70 @@ def get_cell_weights(data, overlap_weighted, key):
     return cells, cell_weights
 
 
-def redshift_distributions_wide(data, overlap_weighted_pchat, overlap_weighted_pzc, bins, pcchat, tomo_bins={}, key='Z',
-                                force_assignment=True, interpolate_kwargs={}, **kwargs):
-    """Returns redshift distribution for sample
+def get_cell_weights_wide(data, overlap_weighted_pchat, cell_key='cell_wide', force_assignment=False, **kwargs):
+    """Given data, get cell weights p(chat) and indices from wide SOM
 
     Parameters
     ----------
-    data :      Data sample of interest with wide data
-    overlap_weighted_pchat  : If True, use overlap weights for p(chat)
-    overlap_weighted_pzc : If True, use overlap weights for p(z|c)
-                Note that whether p(c|chat) is overlap weighted depends on how you built pcchat earlier.
-    bins :      bin edges for redshift distributions data[key]
-    tomo_bins : Which cells belong to which tomographic bins. First column is
-                cell id, second column is an additional reweighting of galaxies in cell.
-                If nothing is passed in, then we by default just use all cells
-    key :       redshift key
+    data             : Dataframe we extract parameters from
+    overlap_weighted_pchat : If True, use mean overlap weights of wide cells in p(chat)
+    cell_key         : Which key we are grabbing. Default: cell_wide
     force_assignment : Calculate cell assignments. If False, then will use whatever value is in the cell_key field of data. Default: True
-    interpolate_kwargs : arguments to pass in for performing interpolation
-    between cells for redshift hists using a 2d gaussian of sigma
-    scale_length out to max_length cells away. The two kwargs are:
-    'scale_length' and 'max_length'
 
     Returns
     -------
-    hists : Either a single array (if no tomo_bins) or multiple arrays
-
+    cells        :  The names of the cells
+    cell_weights :  The fractions of the cells
     """
-    if len(tomo_bins) == 0:
-        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat=overlap_weighted_pchat,
-                                                    force_assignment=force_assignment, **kwargs)
-        if cells.size == 0:
-            hist = np.zeros(len(bins) - 1)
-        else:
-            hist = histogram(data, key=key, cells=cells, cell_weights=cell_weights,
-                             overlap_weighted_pzc=overlap_weighted_pzc, bins=bins,
-                             interpolate_kwargs=interpolate_kwargs)
-        return hist
-    else:
-        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat, force_assignment=force_assignment,
-                                                    **kwargs)
-        cellsort = np.argsort(cells)
-        cells = cells[cellsort]
-        cell_weights = cell_weights[cellsort]
-
-        # break up hists into the different bins
-        hists = []
-        for tomo_key in tomo_bins:
-            cells_use = tomo_bins[tomo_key][:, 0]
-            cells_binweights = tomo_bins[tomo_key][:, 1]
-            cells_conds = np.searchsorted(cells, cells_use, side='left')
-            if len(cells_conds) == 0:
-                hist = np.zeros(len(bins) - 1)
-            else:
-                hist = histogram(data, key=key, cells=cells[cells_conds],
-                                 cell_weights=cell_weights[cells_conds] * cells_binweights, pcchat=pcchat,
-                                 overlap_weighted_pzc=overlap_weighted_pzc, bins=bins,
-                                 interpolate_kwargs=interpolate_kwargs)
-            hists.append(hist)
-        hists = np.array(hists)
-        return hists
+    # if force_assignment:
+    #     data[cell_key] = self.assign_wide(data, **kwargs)
+    return get_cell_weights(data, overlap_weighted_pchat, cell_key)
 
 
-def histogram(data, key, cells, cell_weights, pcchat, overlap_weighted_pzc, deep_som_size=64 * 64, bins=None,
-              individual_chat=False, interpolate_kwargs={}):
-    """Return histogram from values that live in specified wide cells by querying deep cells that contribute
+def histogram_from_fullpz(df, key, overlap_weighted, bin_edges, full_pz_end=6.00, full_pz_npts=601):
+    """Preserve bins from Laigle"""
+    dz_laigle = full_pz_end / (full_pz_npts - 1)
+    condition = np.sum(~np.equal(bin_edges, np.arange(0 - dz_laigle / 2.,
+                                                      full_pz_end + dz_laigle,
+                                                      dz_laigle)))
+    assert condition == 0
 
-    Parameters
-    ----------
-    key                  : Parameter(s) to extract from dataframe
-    cells                : A list of wide cells to return sample from, or a single int.
-    cell_weights         : How much we weight each wide cell. This is the array p(chat | sample)
-    overlap_weighted_pzc : Weight contribution of galaxies within c by overlap_weight, if True. Weighting for p(c|chat) is done using stored transfer matrix.
-    bins                 : Bins we histogram the values into
-    individual_chat      : If True, compute p(z|chat) for each individual cell in cells. If False, compute a single p(z|{chat}) for all cells.
-    interpolate_kwargs   : arguments to pass in for performing interpolation between cells for redshift hists using a 2d gaussian of sigma scale_length out to max_length cells away. The two kwargs are: 'scale_length' and 'max_length'
+    single_cell_hists = np.zeros((len(df), len(key)))
 
-    Returns
-    -------
-    hist : a histogram of the values from self.data[key]
+    overlap_weights = np.ones(len(df))
+    if overlap_weighted:
+        overlap_weights = df['overlap_weight'].values
 
-    Notes
-    -----
-    This method tries to marginalize wide assignments into what deep assignments it has
+    single_cell_hists[:, :] = df[key].values
 
-    """
-    # get sample, p(z|c)
-    all_cells = np.arange(deep_som_size)
-    hists_deep = get_deep_histograms(data, key=key, cells=all_cells, overlap_weighted_pzc=overlap_weighted_pzc,
-                                     bins=bins, interpolate_kwargs=interpolate_kwargs)
-    if individual_chat:  # then compute p(z|chat) for each individual cell in cells and return histograms
-        hists = []
-        for i, (cell, cell_weight) in enumerate(zip(cells, cell_weights)):
-            # p(c|chat,s)p(chat|s) = p(c,chat|s)
-            possible_weights = pcchat[:, [cell]] * np.array([cell_weight])[None]  # (n_deep_cells, 1)
-            # sum_chat p(c,chat|s) = p(c|s)
-            weights = np.sum(possible_weights, axis=-1)
-            conds = (weights != 0) & np.all(np.isfinite(hists_deep), axis=1)
-            # sum_c p(z|c) p(c|s) = p(z|s)
-            hist = np.sum((hists_deep[conds] * weights[conds, None]), axis=0)
+    # normalize sompz p(z) to have area 1
+    dz = 0.01
+    area = np.sum(single_cell_hists, axis=1) * dz
+    area[area == 0] = 1  # some galaxies have pz with only one non-zero point. set these galaxies' histograms to have
+    # area 1
+    area = area.reshape(area.shape[0], 1)
+    single_cell_hists = single_cell_hists / area
 
-            dx = np.diff(bins)
-            normalization = np.sum(dx * hist)
-            if normalization != 0:
-                hist = hist / normalization
-            hists.append(hist)
-        return hists
-    else:  # compute p(z|{chat}) and return histogram
-        # p(c|chat,s)p(chat|s) = p(c,chat|s)
-        possible_weights = pcchat[:, cells] * cell_weights[None]  # (n_deep_cells, n_cells)
-        # sum_chat p(c,chat|s) = p(c|s)
-        weights = np.sum(possible_weights, axis=-1)
-        conds = (weights != 0) & np.all(np.isfinite(hists_deep), axis=1)
-        # sum_c p(z|c) p(c|s) = p(z|s)
-        hist = np.sum((hists_deep[conds] * weights[conds, None]), axis=0)
+    # response weight normalized p(z)
+    single_cell_hists = np.multiply(overlap_weights, single_cell_hists.transpose()).transpose()
 
-        dx = np.diff(bins)
-        normalization = np.sum(dx * hist)
-        if normalization != 0:
-            hist = hist / normalization
-        return hist
+    # sum individual galaxy p(z) to single cell p(z)
+    hist = np.sum(single_cell_hists, axis=0)
+
+    # renormalize p(z|c)
+    area = np.sum(hist) * dz
+    hist = hist / area
+
+    return hist
 
 
-def get_deep_histograms(data, key, cells, overlap_weighted_pzc, bins, cosmos, overlap_key='overlap_weight',
+def get_deep_histograms(data, cosmos, key, cells, overlap_weighted_pzc, bins, overlap_key='overlap_weight',
                         deep_som_size=64 * 64, deep_map_shape=(64 * 64,), interpolate_kwargs={}):
     """Return individual deep histograms for each cell. Can interpolate for empty cells.
 
     Parameters
     ----------
+    data : cosmos data used here
     key   : Parameter to extract from dataframe
     cells : A list of deep cells to return sample from, or a single int.
     overlap_weighted_pzc : Use overlap_weights in p(z|c) histogram if True. Also required if you want to bin conditionalize
@@ -236,7 +166,6 @@ def get_deep_histograms(data, key, cells, overlap_weighted_pzc, bins, cosmos, ov
     between cells for redshift hists using a 2d gaussian of sigma
     scale_length out to max_length cells away. The two kwargs are:
     'scale_length' and 'max_length'
-    data : subset of redshift information to conditionalize on. i.e. for use with computing p(z|c,is_in_data)
     Returns
     -------
     hists : a histogram of the values from self.data[key] for each deep cell
@@ -299,43 +228,127 @@ def get_deep_histograms(data, key, cells, overlap_weighted_pzc, bins, cosmos, ov
     return hists
 
 
-def histogram_from_fullpz(df, key, overlap_weighted, bin_edges, full_pz_end=6.00, full_pz_npts=601):
-    """Preserve bins from Laigle"""
-    dz_laigle = full_pz_end / (full_pz_npts - 1)
-    condition = np.sum(~np.equal(bin_edges, np.arange(0 - dz_laigle / 2.,
-                                                      full_pz_end + dz_laigle,
-                                                      dz_laigle)))
-    assert condition == 0
-    # bin_edges: [-0.005, 0.005], (0.005, 0.015], ... (5.995, 6.005]
+def histogram(data, cosmos, key, cells, cell_weights, pcchat, overlap_weighted_pzc, deep_som_size=64 * 64, bins=None,
+              individual_chat=False, interpolate_kwargs={}):
+    """Return histogram from values that live in specified wide cells by querying deep cells that contribute
 
-    single_cell_hists = np.zeros((len(df), len(key)))
+    Parameters
+    ----------
+    key                  : Parameter(s) to extract from dataframe
+    cells                : A list of wide cells to return sample from, or a single int.
+    cell_weights         : How much we weight each wide cell. This is the array p(chat | sample)
+    overlap_weighted_pzc : Weight contribution of galaxies within c by overlap_weight, if True. Weighting for p(c|chat) is done using stored transfer matrix.
+    bins                 : Bins we histogram the values into
+    individual_chat      : If True, compute p(z|chat) for each individual cell in cells. If False, compute a single p(z|{chat}) for all cells.
+    interpolate_kwargs   : arguments to pass in for performing interpolation between cells for redshift hists using a 2d gaussian of sigma scale_length out to max_length cells away. The two kwargs are: 'scale_length' and 'max_length'
 
-    overlap_weights = np.ones(len(df))
-    if overlap_weighted:
-        overlap_weights = df['overlap_weight'].values
+    Returns
+    -------
+    hist : a histogram of the values from self.data[key]
 
-    single_cell_hists[:, :] = df[key].values
+    Notes
+    -----
+    This method tries to marginalize wide assignments into what deep assignments it has
 
-    # normalize sompz p(z) to have area 1
-    dz = 0.01
-    area = np.sum(single_cell_hists, axis=1) * dz
-    area[
-        area == 0] = 1  # some galaxies have pz with only one non-zero point. set these galaxies' histograms to have
-    # area 1
-    area = area.reshape(area.shape[0], 1)
-    single_cell_hists = single_cell_hists / area
+    """
+    # get sample, p(z|c)
+    all_cells = np.arange(deep_som_size)
+    hists_deep = get_deep_histograms(data, key=key, cells=all_cells, overlap_weighted_pzc=overlap_weighted_pzc,
+                                     bins=bins, interpolate_kwargs=interpolate_kwargs)
+    if individual_chat:  # then compute p(z|chat) for each individual cell in cells and return histograms
+        hists = []
+        for i, (cell, cell_weight) in enumerate(zip(cells, cell_weights)):
+            # p(c|chat,s)p(chat|s) = p(c,chat|s)
+            possible_weights = pcchat[:, [cell]] * np.array([cell_weight])[None]  # (n_deep_cells, 1)
+            # sum_chat p(c,chat|s) = p(c|s)
+            weights = np.sum(possible_weights, axis=-1)
+            conds = (weights != 0) & np.all(np.isfinite(hists_deep), axis=1)
+            # sum_c p(z|c) p(c|s) = p(z|s)
+            hist = np.sum((hists_deep[conds] * weights[conds, None]), axis=0)
 
-    # response weight normalized p(z)
-    single_cell_hists = np.multiply(overlap_weights, single_cell_hists.transpose()).transpose()
+            dx = np.diff(bins)
+            normalization = np.sum(dx * hist)
+            if normalization != 0:
+                hist = hist / normalization
+            hists.append(hist)
+        return hists
+    else:  # compute p(z|{chat}) and return histogram
+        # p(c|chat,s)p(chat|s) = p(c,chat|s)
+        possible_weights = pcchat[:, cells] * cell_weights[None]  # (n_deep_cells, n_cells)
+        # sum_chat p(c,chat|s) = p(c|s)
+        weights = np.sum(possible_weights, axis=-1)
+        conds = (weights != 0) & np.all(np.isfinite(hists_deep), axis=1)
+        # sum_c p(z|c) p(c|s) = p(z|s)
+        hist = np.sum((hists_deep[conds] * weights[conds, None]), axis=0)
 
-    # sum individual galaxy p(z) to single cell p(z)
-    hist = np.sum(single_cell_hists, axis=0)
+        dx = np.diff(bins)
+        normalization = np.sum(dx * hist)
+        if normalization != 0:
+            hist = hist / normalization
+        return hist
 
-    # renormalize p(z|c)
-    area = np.sum(hist) * dz
-    hist = hist / area
 
-    return hist
+def redshift_distributions_wide(data, cosmos, overlap_weighted_pchat, overlap_weighted_pzc, bins, pcchat, tomo_bins={},
+                                key='Z',
+                                force_assignment=True, interpolate_kwargs={}, **kwargs):
+    """Returns redshift distribution for sample
+
+    Parameters
+    ----------
+    data :  Data sample of interest with wide data
+    cosmos: cosmos data
+    overlap_weighted_pchat  : If True, use overlap weights for p(chat)
+    overlap_weighted_pzc : If True, use overlap weights for p(z|c)
+                Note that whether p(c|chat) is overlap weighted depends on how you built pcchat earlier.
+    bins :      bin edges for redshift distributions data[key]
+    tomo_bins : Which cells belong to which tomographic bins. First column is
+                cell id, second column is an additional reweighting of galaxies in cell.
+                If nothing is passed in, then we by default just use all cells
+    key :       redshift key
+    force_assignment : Calculate cell assignments. If False, then will use whatever value is in the cell_key field of data. Default: True
+    interpolate_kwargs : arguments to pass in for performing interpolation
+    between cells for redshift hists using a 2d gaussian of sigma
+    scale_length out to max_length cells away. The two kwargs are:
+    'scale_length' and 'max_length'
+
+    Returns
+    -------
+    hists : Either a single array (if no tomo_bins) or multiple arrays
+
+    """
+    if len(tomo_bins) == 0:
+        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat=overlap_weighted_pchat,
+                                                    force_assignment=force_assignment, **kwargs)
+        if cells.size == 0:
+            hist = np.zeros(len(bins) - 1)
+        else:
+            hist = histogram(data, key=key, cells=cells, cell_weights=cell_weights,
+                             overlap_weighted_pzc=overlap_weighted_pzc, bins=bins,
+                             interpolate_kwargs=interpolate_kwargs)
+        return hist
+    else:
+        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat, force_assignment=force_assignment,
+                                                    **kwargs)
+        cellsort = np.argsort(cells)
+        cells = cells[cellsort]
+        cell_weights = cell_weights[cellsort]
+
+        # break up hists into the different bins
+        hists = []
+        for tomo_key in tomo_bins:
+            cells_use = tomo_bins[tomo_key][:, 0]
+            cells_binweights = tomo_bins[tomo_key][:, 1]
+            cells_conds = np.searchsorted(cells, cells_use, side='left')
+            if len(cells_conds) == 0:
+                hist = np.zeros(len(bins) - 1)
+            else:
+                hist = histogram(data, key=key, cells=cells[cells_conds],
+                                 cell_weights=cell_weights[cells_conds] * cells_binweights, pcchat=pcchat,
+                                 overlap_weighted_pzc=overlap_weighted_pzc, bins=bins,
+                                 interpolate_kwargs=interpolate_kwargs)
+            hists.append(hist)
+        hists = np.array(hists)
+        return hists
 
 
 def plot_nz(hists, zbins, outfile, xlimits=(0, 2), ylimits=(0, 3.25)):
@@ -386,7 +399,7 @@ def nz_bin_conditioned(wfdata, cosmos, overlap_weighted_pchat, overlap_weighted_
 
     stored_overlap_weight = cosmos['overlap_weight'].copy()  # save for later
 
-    if (overlap_weighted_pzc == False):  # we need to use it, but you don't want to
+    if not overlap_weighted_pzc:  # we need to use it, but you don't want to
         cosmos['overlap_weight'] = np.ones(len(cosmos))
 
     cosmos.loc[cosmos['cell_wide_unsheared'].isin(tomo_cells[:, 0]), 'overlap_weight'] *= f
@@ -714,5 +727,3 @@ def smooth(twoptfile, nzsmoothfile, runname, label, data_dir, oldnz):
     plt.legend(loc='upper right', fontsize=16)
     plt.title('Wide n(z) for Y3 SOM', fontsize=16)
     plt.savefig(data_dir + 'Y3_smooth_wide_nz_faint.png')
-
-
