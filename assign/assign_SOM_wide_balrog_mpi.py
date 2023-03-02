@@ -8,16 +8,18 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nprocs = comm.Get_size()
 
-path_out = '/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3/wide_balrog_230116'
-path_wide = '/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3'
 som_type = 'wide'
 data_type = 'balrog'
 shear = 'unsheared'
+path_out = f'/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3/{som_type}_{data_type}_230116'
+path_wide = '/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3'
+
+# This is just an example of wide field data file you can use
+catname = '/global/cscratch1/sd/acampos/sompz_data/v0.50_andresa/deep_balrog.pkl'
 
 bands = ['r', 'i', 'z']
 
 if rank == 0:
-    catname = '/global/cscratch1/sd/acampos/sompz_data/v0.50_andresa/deep_balrog.pkl'
     df = pd.read_pickle(catname)
 
     fluxes = {}
@@ -53,7 +55,6 @@ for i, band in enumerate(bands):
     fluxes_d[:, i] = fluxes[band]
     fluxerrs_d[:, i] = flux_errors[band]
 
-
 # Train the SOM with this set (takes a few hours on laptop!)
 nTrain = fluxes_d.shape[0]
 
@@ -74,12 +75,12 @@ inds = np.array_split(np.arange(len(fluxes_d)), nsubsets)
 
 
 # This function checks whether you have already run that subset, and if not it runs the SOM classifier
-def assign_som(index):
-    print(f'Running rank {rank}, index {index}')
-    filename = f'{path_out}/som_{som_type}_32x32_1e7_assign_{data_type}_{shear}_{rank}_subsample_{index}.npz'
+def assign_som(ind):
+    print(f'Running rank {rank}, index {ind}')
+    filename = f'{path_out}/som_{som_type}_32x32_1e7_assign_{data_type}_{shear}_{rank}_subsample_{ind}.npz'
     if not os.path.exists(filename):
         print('Running')
-        cells_test, _ = som.classify(fluxes_d[inds[index]], fluxerrs_d[inds[index]])
+        cells_test, _ = som.classify(fluxes_d[inds[ind]], fluxerrs_d[inds[ind]])
         np.savez(filename, cells=cells_test)
     else:
         print('File already exists')
