@@ -1,6 +1,6 @@
 # sompz_y6
 
-## Stting up the environment
+## Setting up the environment
 
 You need to set up a Python 3 enviroment with the packages listed in *requierments.txt*
 
