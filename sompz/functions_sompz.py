@@ -714,3 +714,5 @@ def smooth(twoptfile, nzsmoothfile, runname, label, data_dir, oldnz):
     plt.legend(loc='upper right', fontsize=16)
     plt.title('Wide n(z) for Y3 SOM', fontsize=16)
     plt.savefig(data_dir + 'Y3_smooth_wide_nz_faint.png')
+
+
