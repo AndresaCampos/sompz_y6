@@ -6,6 +6,7 @@ import scipy.interpolate as interp
 from scipy.signal import savgol_filter
 
 
+
 def flux2mag(flux, zero_pt=30):
     """Converts fluxes to Magnitudes"""
     return zero_pt - 2.5 * np.log10(flux)
@@ -52,16 +53,16 @@ def calculate_weights(smooth_response_file, snr, size_ratio, injection_counts, u
     return w
 
 
-def calculate_pcchat(balrog_data, deep_som_size, wide_som_size):
+def calculate_pcchat(deep_som_size, wide_som_size, cell_deep_assign, cell_wide_assign, overlap_weight):
     pcchat_num = np.zeros((deep_som_size, wide_som_size))
     np.add.at(pcchat_num,
-              [balrog_data['cell_deep'], balrog_data['cell_wide_unsheared']],
-              balrog_data['overlap_weight'])
+              [cell_deep_assign, cell_wide_assign],
+              overlap_weight)
 
     pcchat_denom = pcchat_num.sum(axis=0)
     pcchat = pcchat_num / pcchat_denom[None]
 
-    # any nonfinite in pcchat are to be treated as 0 probability
+    # any nonfinite in pcchat are to be treated as 0 probabilty
     pcchat = np.where(np.isfinite(pcchat), pcchat, 0)
 
     return pcchat
