@@ -14,11 +14,8 @@ def build_balrog_df(balrog_file,
 
     print("Length of balrog_data: " + str(len(balrog_data)))
 
-    cells_deep_balrog = np.loadtxt(deep_cells_assignment_balrog_file, dtype=np.int32)
-    cells_wide_balrog = np.loadtxt(wide_cells_assignment_balrog_file, dtype=np.int32)
-
-    balrog_data['cell_deep_unsheared'] = cells_deep_balrog
-    balrog_data['cell_wide_unsheared'] = cells_wide_balrog
+    balrog_data['cell_deep_unsheared'] = pd.read_csv(deep_cells_assignment_balrog_file, header=None, dtype=np.int32)
+    balrog_data['cell_wide_unsheared'] = pd.read_csv(wide_cells_assignment_balrog_file, header=None, dtype=np.int32)
 
     return balrog_data
 
