@@ -6,7 +6,6 @@ import scipy.interpolate as interp
 from scipy.signal import savgol_filter
 
 
-
 def flux2mag(flux, zero_pt=30):
     """Converts fluxes to Magnitudes"""
     return zero_pt - 2.5 * np.log10(flux)
@@ -151,22 +150,20 @@ def histogram_from_fullpz(df, key, overlap_weighted, bin_edges, full_pz_end=6.00
     return hist
 
 
-def get_deep_histograms(data, cosmos, key, cells, overlap_weighted_pzc, bins, overlap_key='overlap_weight',
+def get_deep_histograms(data, deep_data, key, cells, overlap_weighted_pzc, bins, overlap_key='overlap_weight',
                         deep_som_size=64 * 64, deep_map_shape=(64 * 64,), interpolate_kwargs={}):
     """Return individual deep histograms for each cell. Can interpolate for empty cells.
 
     Parameters
     ----------
-    data : cosmos data used here
-    key   : Parameter to extract from dataframe
-    cells : A list of deep cells to return sample from, or a single int.
-    overlap_weighted_pzc : Use overlap_weights in p(z|c) histogram if True. Also required if you want to bin conditionalize
-    overlap_key : column name for the overlap weights in the dataframe, default to 'overlap_weight'
-    bins  : Bins we histogram the values into
-    interpolate_kwargs : arguments to pass in for performing interpolation
-    between cells for redshift hists using a 2d gaussian of sigma
-    scale_length out to max_length cells away. The two kwargs are:
-    'scale_length' and 'max_length'
+    deep_data             : cosmos data used here for Y3
+    key                   : Parameter to extract from dataframe
+    cells                 : A list of deep cells to return sample from, or a single int.
+    overlap_weighted_pzc  : Use overlap_weights in p(z|c) histogram if True. Also required if you want to bin conditionalize
+    overlap_key           : column name for the overlap weights in the dataframe, default to 'overlap_weight'
+    bins                  : Bins we histogram the values into
+    interpolate_kwargs    : arguments to pass in for performing interpolation between cells for redshift hists using a 2d gaussian of sigma scale_length out to max_length cells away.
+    The two kwargs are    : 'scale_length' and 'max_length'
     Returns
     -------
     hists : a histogram of the values from self.data[key] for each deep cell
@@ -183,7 +180,7 @@ def get_deep_histograms(data, cosmos, key, cells, overlap_weighted_pzc, bins, ov
     populated_cells = []
     for ci, c in enumerate(cells):
         try:
-            df = cosmos.groupby('cell_deep').get_group(c)
+            df = deep_data.groupby('cell_deep').get_group(c)
             if type(key) is str:
                 z = df[key].values
                 if overlap_weighted_pzc:
@@ -229,7 +226,7 @@ def get_deep_histograms(data, cosmos, key, cells, overlap_weighted_pzc, bins, ov
     return hists
 
 
-def histogram(data, cosmos, key, cells, cell_weights, pcchat, overlap_weighted_pzc, deep_som_size=64 * 64, bins=None,
+def histogram(data, deep_data, key, cells, cell_weights, pcchat, overlap_weighted_pzc, deep_som_size=64 * 64, bins=None,
               individual_chat=False, interpolate_kwargs={}):
     """Return histogram from values that live in specified wide cells by querying deep cells that contribute
 
@@ -254,7 +251,7 @@ def histogram(data, cosmos, key, cells, cell_weights, pcchat, overlap_weighted_p
     """
     # get sample, p(z|c)
     all_cells = np.arange(deep_som_size)
-    hists_deep = get_deep_histograms(data, key=key, cells=all_cells, overlap_weighted_pzc=overlap_weighted_pzc,
+    hists_deep = get_deep_histograms(data, deep_data, key=key, cells=all_cells, overlap_weighted_pzc=overlap_weighted_pzc,
                                      bins=bins, interpolate_kwargs=interpolate_kwargs)
     if individual_chat:  # then compute p(z|chat) for each individual cell in cells and return histograms
         hists = []
@@ -289,15 +286,22 @@ def histogram(data, cosmos, key, cells, cell_weights, pcchat, overlap_weighted_p
         return hist
 
 
-def redshift_distributions_wide(data, cosmos, overlap_weighted_pchat, overlap_weighted_pzc, bins, pcchat, tomo_bins={},
+def redshift_distributions_wide(data,
+                                deep_data,
+                                overlap_weighted_pchat,
+                                overlap_weighted_pzc,
+                                bins,
+                                pcchat,
+                                tomo_bins={},
                                 key='Z',
-                                force_assignment=True, interpolate_kwargs={}, **kwargs):
+                                force_assignment=True,
+                                interpolate_kwargs={}, **kwargs):
     """Returns redshift distribution for sample
 
     Parameters
     ----------
     data :  Data sample of interest with wide data
-    cosmos: cosmos data
+    deep_data: cosmos data
     overlap_weighted_pchat  : If True, use overlap weights for p(chat)
     overlap_weighted_pzc : If True, use overlap weights for p(z|c)
                 Note that whether p(c|chat) is overlap weighted depends on how you built pcchat earlier.
@@ -323,13 +327,13 @@ def redshift_distributions_wide(data, cosmos, overlap_weighted_pchat, overlap_we
         if cells.size == 0:
             hist = np.zeros(len(bins) - 1)
         else:
-            hist = histogram(data, key=key, cells=cells, cell_weights=cell_weights,
+            hist = histogram(data, deep_data, key=key, cells=cells, cell_weights=cell_weights,
                              overlap_weighted_pzc=overlap_weighted_pzc, bins=bins,
                              interpolate_kwargs=interpolate_kwargs)
         return hist
     else:
-        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat, force_assignment=force_assignment,
-                                                    **kwargs)
+        cells, cell_weights = get_cell_weights_wide(data, overlap_weighted_pchat,
+                                                    force_assignment=force_assignment, **kwargs)
         cellsort = np.argsort(cells)
         cells = cells[cellsort]
         cell_weights = cell_weights[cellsort]
@@ -343,7 +347,7 @@ def redshift_distributions_wide(data, cosmos, overlap_weighted_pchat, overlap_we
             if len(cells_conds) == 0:
                 hist = np.zeros(len(bins) - 1)
             else:
-                hist = histogram(data, key=key, cells=cells[cells_conds],
+                hist = histogram(data, deep_data, key=key, cells=cells[cells_conds],
                                  cell_weights=cell_weights[cells_conds] * cells_binweights, pcchat=pcchat,
                                  overlap_weighted_pzc=overlap_weighted_pzc, bins=bins,
                                  interpolate_kwargs=interpolate_kwargs)
@@ -394,7 +398,7 @@ def nz_bin_conditioned(wfdata, cosmos, overlap_weighted_pchat, overlap_weighted_
     # print('tomo_cells', tomo_cells)
     bl = len(cosmos[cosmos['cell_wide_unsheared'].isin(tomo_cells[:, 0])])
 
-    print('subset of reshift sample in bin:', bl)
+    print('subset of redshift sample in bin:', bl)
 
     f = 1.e9  # how much more we weight the redshift of a galaxy that's in the right bin
 
@@ -405,7 +409,7 @@ def nz_bin_conditioned(wfdata, cosmos, overlap_weighted_pchat, overlap_weighted_
 
     cosmos.loc[cosmos['cell_wide_unsheared'].isin(tomo_cells[:, 0]), 'overlap_weight'] *= f
 
-    nz = redshift_distributions_wide(data=wfdata, overlap_weighted_pchat=overlap_weighted_pchat,
+    nz = redshift_distributions_wide(data=wfdata, deep_data=cosmos, overlap_weighted_pchat=overlap_weighted_pchat,
                                      overlap_weighted_pzc=True,
                                      bins=zbins, pcchat=pcchat, tomo_bins={"mybin": tomo_cells}, key=zkey,
                                      force_assignment=False, cell_key=cell_wide_key)
