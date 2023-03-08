@@ -90,6 +90,8 @@ def build_wide_df(wide_field_file, wide_data_assignment_df):
         wide_data_assignment_df['unsheared/weight'] = np.array(f['catalog/metacal/unsheared/weight'][:])[select_metacal]
         print("read unsheared/wight done")
 
+    return wide_data_assignment_df
+
 
 def bin_assignment_spec(spec_data, deep_som_size, wide_som_size, inj_counts, inj_ids, bin_edges):
     # assign gals in redshift sample to bins
@@ -119,3 +121,12 @@ def calculate_wide_overlap_weight(unsheared_R11, unsheared_R22, unsheared_weight
     wide_overlap_weight *= np.array(unsheared_weight)
 
     return wide_overlap_weight
+
+
+def tomo_bins_wide_2d(tomo_bins_wide):
+    for k in tomo_bins_wide:
+        if tomo_bins_wide[k].ndim == 1:
+            tomo_bins_wide[k] = np.column_stack((tomo_bins_wide[k], np.ones(len(tomo_bins_wide[k]))))
+        renorm = 1. / np.average(tomo_bins_wide[k][:, 1])
+        tomo_bins_wide[k][:, 1] *= renorm  # renormalize so the mean weight is 1; important for bin conditioning
+    return tomo_bins_wide
