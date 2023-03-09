@@ -42,7 +42,7 @@ def build_spec_df(cosmos_file, deep_data):
 
     zpdfcols = ["Z{:.2f}".format(s).replace(".", "_") for s in np.arange(0, 6.01, 0.01)]
     zpdfcols_indices = [cosmos_z.columns.get_loc(_) for _ in zpdfcols]
-    cosmos[zpdfcols] = pd.DataFrame(-1 * np.ones((len(cosmos), len(zpdfcols))), columns=zpdfcols, index=cosmos.index)
+    cosmos = pd.concat([cosmos, pd.DataFrame(-1 * np.ones((len(cosmos), len(zpdfcols))), columns=zpdfcols, index=cosmos.index)], axis=1)
     cosmos.loc[is_match, zpdfcols] = cosmos_z.iloc[idx[is_match], zpdfcols_indices].values
 
     cosmos.loc[is_match, 'LAIGLE_ID'] = cosmos_z.iloc[idx[is_match], cosmos_z.columns.get_loc('ID')].values
@@ -123,7 +123,8 @@ def calculate_wide_overlap_weight(unsheared_R11, unsheared_R22, unsheared_weight
     return wide_overlap_weight
 
 
-def tomo_bins_wide_2d(tomo_bins_wide):
+def tomo_bins_wide_2d(tomo_bins_wide_dict):
+    tomo_bins_wide = tomo_bins_wide_dict.copy()
     for k in tomo_bins_wide:
         if tomo_bins_wide[k].ndim == 1:
             tomo_bins_wide[k] = np.column_stack((tomo_bins_wide[k], np.ones(len(tomo_bins_wide[k]))))
