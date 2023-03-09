@@ -1,3 +1,10 @@
+# cells, cell_weights_wide = get_cell_weights_wide(wide_data, 
+#                                                  overlap_weighted_pchat=True, 
+#                                                  force_assignment=False, 
+#                                                  cell_key='cell_wide_unsheared')
+
+# np.save(data_dir + 'pchat.npy', cell_weights_wide)
+
 # _, _, hists_wide_piled = pileup(hists_wide,
 #                                 zbins,
 #                                 zmean,
