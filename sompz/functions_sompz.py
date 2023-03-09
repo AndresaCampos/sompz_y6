@@ -677,9 +677,7 @@ def save_des_nz(hists, zbins, n_bins, outdir, run_name, suffix):
     os.system('chmod a+r ' + nz_out)
 
 
-def to2point(lastnz, templatef, runname, label, data_dir):
-    outfile = data_dir + 'Y3_2pt_' + label + '_' + runname + '.fits'
-
+def to2point(outfile, lastnz, templatef, runname, label, data_dir):
     # open-up the saved final fits
     nz = fitsio.read(lastnz)
 
@@ -696,10 +694,10 @@ def to2point(lastnz, templatef, runname, label, data_dir):
         oldnz.kernels[0].nzs[i] = nz[bin]
         # print(oldnz.kernels[0].nzs[i])
     oldnz.to_fits(outfile, clobber=True, overwrite=True)
+    
 
 
-def smooth(twoptfile, nzsmoothfile, runname, label, data_dir, oldnz):
-    outfilesmooth = data_dir + 'Y3_2pt_' + label + '_' + runname + '_smooth.fits'
+def smooth(outfilesmooth, twoptfile, nzsmoothfile, runname, label, data_dir, oldnz):
 
     # Troxel's smoothing adapted
     nosmooth = twopoint.TwoPointFile.from_fits(twoptfile)
