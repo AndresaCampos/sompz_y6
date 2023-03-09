@@ -54,8 +54,9 @@ def calculate_weights(smooth_response_file, snr, size_ratio, injection_counts, u
 
 def calculate_pcchat(deep_som_size, wide_som_size, cell_deep_assign, cell_wide_assign, overlap_weight):
     pcchat_num = np.zeros((deep_som_size, wide_som_size))
+    indices = list(zip(cell_deep_assign, cell_wide_assign))
     np.add.at(pcchat_num,
-              [tuple(cell_deep_assign), tuple(cell_wide_assign)],
+              indices,
               overlap_weight)
 
     pcchat_denom = pcchat_num.sum(axis=0)
