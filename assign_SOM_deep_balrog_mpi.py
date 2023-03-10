@@ -19,7 +19,7 @@ som_dim = 64
 # This is just an example of wide field data file you can use
 catname = '/global/cscratch1/sd/acampos/sompz_data/v0.50_andresa/deep_balrog.pkl'
 
-bands = ['r', 'i', 'z']
+bands = ['U', 'G', 'R', 'I', 'Z', 'J', 'H', 'K']
 
 if rank == 0:
     df = pd.read_pickle(catname)
@@ -30,12 +30,12 @@ if rank == 0:
     for i, band in enumerate(bands):
         print(i, band)
         fluxes[band] = np.array_split(
-            df['unsheared/flux_%s' % band].values,
+            df['BDF_FLUX_DERED_CALIB_%s' % band].values,
             nprocs
         )
 
         flux_errors[band] = np.array_split(
-            df['unsheared/flux_err_%s' % band].values,
+            df['BDF_FLUX_ERR_DERED_CALIB_%s' % band].values,
             nprocs
         )
 
