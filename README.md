@@ -10,6 +10,10 @@ $ conda activate sompz \
 $ pip install twopoint \
 $ python -m ipykernel install --user --name sompz --display-name SOMPZ \
 
+If you running at nersc, you need to also need the following 2 commands to make your mpi4py work properly
+
+$ module swap PrgEnv-${PE_ENV,,} PrgEnv-gnu \
+$ MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py mpi4py\
 
 You only need to run this once. Now, when you want to use the sompz enviroment just run
 
