@@ -14,7 +14,7 @@ with open(cfgfile, 'r') as fp:
 
 # Read variables from config file
 output_path = cfg['out_dir']
-som_len = cfg['deep_som_len']
+som_dim = cfg['deep_som_dim']
 deep_file = cfg['deep_balrog_file']
 bands = cfg['deep_bands']
 bands_label = cfg['deep_bands_label']
@@ -46,10 +46,10 @@ metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 # Now training the SOM 
 som = ns.NoiseSOM(metric, fluxes_d[indices, :], fluxerrs_d[indices, :],
                   learning=hh,
-                  shape=(som_len, som_len),
+                  shape=(som_dim, som_dim),
                   wrap=False, logF=True,
                   initialize='sample',
                   minError=0.02)
 
 # And save the resultant weight matrix
-np.save(f'{output_path}/som_deep_{som_len}_{som_len}.npy', som.weights)
+np.save(f'{output_path}/som_deep_{som_dim}_{som_dim}.npy', som.weights)

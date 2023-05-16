@@ -17,7 +17,7 @@ output_path = cfg['out_dir']
 bands = cfg['wide_bands']
 bands_label = cfg['wide_bands_label']
 bands_err_label = cfg['wide_bands_err_label']
-som_len = cfg['wide_som_len']
+som_dim = cfg['wide_som_dim']
 wide_file = cfg['wide_file']
 wide_h5_path = cfg['wide_h5_path']
 
@@ -48,10 +48,10 @@ metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 # Now training the SOM
 som = ns.NoiseSOM(metric, fluxes_d[indices, :], fluxerrs_d[indices, :],
                   learning=hh,
-                  shape=(som_len, som_len),
+                  shape=(som_dim, som_dim),
                   wrap=False, logF=True,
                   initialize='sample',
                   minError=0.02)
 
 # And save the resultant weight matrix
-np.save(f'{output_path}/som_wide_{som_len}_{som_len}_1e7.npy', som.weights)
+np.save(f'{output_path}/som_wide_{som_dim}_{som_dim}_1e7.npy', som.weights)
