@@ -19,7 +19,7 @@ with open(cfgfile, 'r') as fp:
     cfg = yaml.safe_load(fp)
 
 som_type = 'wide'
-data_type = 'balrog'
+data_type = 'deep_balrog'
 
 # Read variables from config file
 output_path = cfg['out_dir']
