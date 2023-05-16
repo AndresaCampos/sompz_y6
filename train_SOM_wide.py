@@ -20,8 +20,7 @@ bands_err_label = cfg['wide_bands_err_label']
 som_dim = cfg['wide_som_dim']
 wide_file = cfg['wide_file']
 wide_h5_path = cfg['wide_h5_path']
-shear_type = cfg['shear_types'][0]
-print(shear_type)
+no_shear = cfg['shear_types'][0]
 
 # Load data
 with h5py.File(wide_file, 'r') as f:
@@ -33,9 +32,8 @@ with h5py.File(wide_file, 'r') as f:
 
     for i, band in enumerate(bands):
         print(i, band)
-        fluxes_d[:, i] = f[wide_h5_path + shear_type + '/' + bands_label + band][...][ind_mcal]
-        fluxerrs_d[:, i] = f[wide_h5_path + shear_type + '/' + bands_err_label + band][...][ind_mcal]
-
+        fluxes_d[:, i] = f[wide_h5_path + no_shear + bands_label + band][...][ind_mcal]
+        fluxerrs_d[:, i] = f[wide_h5_path + no_shear + bands_err_label + band][...][ind_mcal]
 
 # Train the SOM with this set (takes a few hours on laptop!)
 nTrain = 10000000
