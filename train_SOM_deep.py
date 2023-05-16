@@ -15,23 +15,23 @@ with open(cfgfile, 'r') as fp:
 # Read variables from config file
 output_path = cfg['out_dir']
 som_dim = cfg['deep_som_dim']
-deep_file = cfg['deep_balrog_file']
+deep_balrog_file = cfg['deep_balrog_file']
 bands = cfg['deep_bands']
 bands_label = cfg['deep_bands_label']
 bands_err_label = cfg['deep_bands_err_label']
 
 # Load data
-deep_data = pickle.load(open(deep_file, 'rb'), encoding='latin1')
+deep_balrog_data = pickle.load(open(deep_balrog_file, 'rb'), encoding='latin1')
 
 # Create flux and flux_err vectors
-len_deep = len(deep_data[bands_label+bands[0]])
+len_deep = len(deep_balrog_data[bands_label + bands[0]])
 fluxes_d = np.zeros((len_deep, len(bands)))
 fluxerrs_d = np.zeros((len_deep, len(bands)))
 
 for i, band in enumerate(bands):
     print(i, band)
-    fluxes_d[:, i] = deep_data[bands_label+band]
-    fluxerrs_d[:, i] = deep_data[bands_err_label+band]
+    fluxes_d[:, i] = deep_balrog_data[bands_label + band]
+    fluxerrs_d[:, i] = deep_balrog_data[bands_err_label + band]
 
 # Train the SOM with this set (takes a few hours on laptop!)
 nTrain = fluxes_d.shape[0]
