@@ -1,6 +1,8 @@
 import os
+import sys
 import numpy as np
 import h5py
+import yaml
 from sompz import NoiseSOM as ns
 from mpi4py import MPI
 
@@ -8,38 +10,46 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nprocs = comm.Get_size()
 
+if len(sys.argv) == 1:
+    cfgfile = 'y3_sompz.cfg'
+else:
+    cfgfile = sys.argv[1]
+
+with open(cfgfile, 'r') as fp:
+    cfg = yaml.safe_load(fp)
+
 som_type = 'wide'
 shear = 'unsheared'
-path_out = f'/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3/{som_type}_{shear}'
-path_wide = '/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3'
-som_wide = 'som_wide_32_32_1e7.npy'
-som_dim = 32
+
+som_wide = cfg['som_wide']
+som_dim = cfg['wide_som_dim']
+output_path = cfg['out_dir']
+wide_h5_path = cfg['wide_h5_path']
+bands_label = cfg['wide_bands_label']
+bands_err_label = cfg['wide_bands_err_label']
 
 # This is just an example of wide field data file you can use
-catname = '/global/cscratch1/sd/acampos/sompz_data/Y3_mastercat_03_31_20.h5'
+wide_file = cfg['wide_file']
 
-bands = ['r', 'i', 'z']
+bands = cfg['wide_bands']
 
 if rank == 0:
-    with h5py.File(catname, 'r') as f:
+    with h5py.File(wide_file, 'r') as f:
         ind_mcal = f['index']['select']
         total_length = len(ind_mcal)
 
         fluxes = {}
         flux_errors = {}
-
         for i, band in enumerate(bands):
             print(i, band)
             fluxes[band] = np.array_split(
-                f[f'/catalog/metacal/{shear}/flux_{band}'][...][ind_mcal],
+                f[wide_h5_path + shear + bands_label + band][...][ind_mcal],
                 nprocs
             )
-
             flux_errors[band] = np.array_split(
-                f[f'/catalog/metacal/{shear}/flux_err_{band}'][...][ind_mcal],
+                f[wide_h5_path + shear + bands_err_label + band][...][ind_mcal],
                 nprocs
             )
-
 else:
     # data = None
     fluxes = {b: None for b in bands}
@@ -61,7 +71,7 @@ for i, band in enumerate(bands):
 nTrain = fluxes_d.shape[0]
 
 # Now, instead of training the SOM, we load the SOM we trained:
-som_weights = np.load(f'{path_wide}/{som_wide}', allow_pickle=True)
+som_weights = np.load(f'{output_path}/{som_wide}', allow_pickle=True)
 hh = ns.hFunc(nTrain, sigma=(30, 1))
 metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 som = ns.NoiseSOM(metric, None, None,
@@ -72,14 +82,13 @@ som = ns.NoiseSOM(metric, None, None,
                   minError=0.02)
 
 nsubsets = 10
-
 inds = np.array_split(np.arange(len(fluxes_d)), nsubsets)
 
 
 # This function checks whether you have already run that subset, and if not it runs the SOM classifier
 def assign_som(ind):
     print(f'Running rank {rank}, index {ind}')
-    filename = f'{path_out}/{som_type}_{shear}/som_wide_32x32_1e7_assign_{som_type}_{shear}_{rank}_subsample_{ind}.npz'
+    filename = f'{output_path}/{som_type}_{shear}/som_wide_32_32_1e7_assign_{som_type}_{shear}_{rank}_subsample_{ind}.npz'
     if not os.path.exists(filename):
         print('Running')
         cells_test, _ = som.classify(fluxes_d[inds[ind]], fluxerrs_d[inds[ind]])
