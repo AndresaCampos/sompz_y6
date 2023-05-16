@@ -1,24 +1,41 @@
+import sys
 import numpy as np
+import yaml
 from sompz import NoiseSOM as ns
 import h5py
 
-output_path = '/global/cscratch1/sd/acampos/SOM/cats_wide'
-catname = '/global/cscratch1/sd/acampos/sompz_data/Y3_mastercat_03_31_20.h5'
+if len(sys.argv) == 1:
+    cfgfile = 'y3_sompz.cfg'
+else:
+    cfgfile = sys.argv[1]
 
-with h5py.File(catname, 'r') as f:
+with open(cfgfile, 'r') as fp:
+    cfg = yaml.safe_load(fp)
+
+# Read variables from config file
+output_path = cfg['out_dir']
+bands = cfg['wide_bands']
+bands_label = cfg['wide_bands_label']
+bands_err_label = cfg['wide_bands_err_label']
+som_len = cfg['wide_som_len']
+wide_file = cfg['wide_file']
+wide_h5_path = cfg['wide_h5_path']
+
+# Load data
+with h5py.File(wide_file, 'r') as f:
     ind_mcal = f['index']['select']
     total_length = len(ind_mcal)
 
-    bands = ['r', 'i', 'z']
     fluxes_d = np.zeros((total_length, len(bands)))
     fluxerrs_d = np.zeros((total_length, len(bands)))
 
     for i, band in enumerate(bands):
         print(i, band)
-        fluxes_d[:, i] = f['/catalog/metacal/unsheared/flux_%s' % band][...][ind_mcal]
-        fluxerrs_d[:, i] = f['/catalog/metacal/unsheared/flux_err_%s' % band][...][ind_mcal]
+        fluxes_d[:, i] = f[wide_h5_path + bands_label + band][...][ind_mcal]
+        fluxerrs_d[:, i] = f[wide_h5_path + bands_err_label + band][...][ind_mcal]
 
-    # Train the SOM with this set (takes a few hours on laptop!)
+
+# Train the SOM with this set (takes a few hours on laptop!)
 nTrain = 10000000
 
 # Scramble the order of the catalog for purposes of training
@@ -31,10 +48,10 @@ metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 # Now training the SOM
 som = ns.NoiseSOM(metric, fluxes_d[indices, :], fluxerrs_d[indices, :],
                   learning=hh,
-                  shape=(32, 32),
+                  shape=(som_len, som_len),
                   wrap=False, logF=True,
                   initialize='sample',
                   minError=0.02)
 
 # And save the resultant weight matrix
-np.save(f'{output_path}/som_wide_32_32_1e7.npy', som.weights)
+np.save(f'{output_path}/som_wide_{som_len}_{som_len}_1e7.npy', som.weights)

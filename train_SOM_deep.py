@@ -1,21 +1,37 @@
 import pickle
+import sys
 import numpy as np
+import yaml
 from sompz import NoiseSOM as ns
 
-output_path = '/global/cscratch1/sd/acampos/SOM/cats_sompz'
-deep_file = '/global/cscratch1/sd/acampos/sompz_data/v0.50/deep_balrog.pkl'
+if len(sys.argv) == 1:
+    cfgfile = 'y3_sompz.cfg'
+else:
+    cfgfile = sys.argv[1]
 
+with open(cfgfile, 'r') as fp:
+    cfg = yaml.safe_load(fp)
+
+# Read variables from config file
+output_path = cfg['out_dir']
+som_len = cfg['deep_som_len']
+deep_file = cfg['deep_balrog_file']
+bands = cfg['deep_bands']
+bands_label = cfg['deep_bands_label']
+bands_err_label = cfg['deep_bands_err_label']
+
+# Load data
 deep_data = pickle.load(open(deep_file, 'rb'), encoding='latin1')
-len_deep = len(deep_data['BDF_FLUX_DERED_CALIB_U'])
 
-bands = ['U', 'G', 'R', 'I', 'Z', 'J', 'H', 'K']
+# Create flux and flux_err vectors
+len_deep = len(deep_data[bands_label+bands[0]])
 fluxes_d = np.zeros((len_deep, len(bands)))
 fluxerrs_d = np.zeros((len_deep, len(bands)))
 
 for i, band in enumerate(bands):
     print(i, band)
-    fluxes_d[:, i] = deep_data['BDF_FLUX_DERED_CALIB_%s' % band]
-    fluxerrs_d[:, i] = deep_data['BDF_FLUX_ERR_DERED_CALIB_%s' % band]
+    fluxes_d[:, i] = deep_data[bands_label+band]
+    fluxerrs_d[:, i] = deep_data[bands_err_label+band]
 
 # Train the SOM with this set (takes a few hours on laptop!)
 nTrain = fluxes_d.shape[0]
@@ -30,10 +46,10 @@ metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 # Now training the SOM 
 som = ns.NoiseSOM(metric, fluxes_d[indices, :], fluxerrs_d[indices, :],
                   learning=hh,
-                  shape=(64, 64),
+                  shape=(som_len, som_len),
                   wrap=False, logF=True,
                   initialize='sample',
                   minError=0.02)
 
 # And save the resultant weight matrix
-np.save(f'{output_path}/som_deep_64_64.npy', som.weights)
+np.save(f'{output_path}/som_deep_{som_len}_{som_len}.npy', som.weights)
