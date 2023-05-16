@@ -1,6 +1,8 @@
 import os
+import sys
 import numpy as np
 import pandas as pd
+import yaml
 from mpi4py import MPI
 from sompz import NoiseSOM as ns
 
@@ -8,37 +10,42 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nprocs = comm.Get_size()
 
+if len(sys.argv) == 1:
+    cfgfile = 'y3_sompz.cfg'
+else:
+    cfgfile = sys.argv[1]
+
+with open(cfgfile, 'r') as fp:
+    cfg = yaml.safe_load(fp)
+
 som_type = 'deep'
 data_type = 'balrog'
-shear = 'unsheared'
-output_path = f'/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3/{som_type}_{data_type}'
-deep_som_path = '/global/cscratch1/sd/acampos/sompz/test/full_run_on_data/SOM/cats_Y3'
-deep_som = 'som_deep_64_64.npy'
-som_dim = 64
 
-# This is just an example of wide field data file you can use
-catname = '/global/cscratch1/sd/acampos/sompz_data/v0.50_andresa/deep_balrog.pkl'
+# Read variables from config file
+output_path = cfg['out_dir']
+som_deep = cfg['som_deep']
+som_dim = cfg['deep_som_dim']
+deep_balrog_file = cfg['deep_balrog_file']
+bands = cfg['deep_bands']
+bands_label = cfg['deep_bands_label']
+bands_err_label = cfg['deep_bands_err_label']
 
-bands = ['U', 'G', 'R', 'I', 'Z', 'J', 'H', 'K']
-
+# Load data
 if rank == 0:
-    df = pd.read_pickle(catname)
+    df = pd.read_pickle(deep_balrog_file)
 
     fluxes = {}
     flux_errors = {}
-
     for i, band in enumerate(bands):
         print(i, band)
         fluxes[band] = np.array_split(
-            df['BDF_FLUX_DERED_CALIB_%s' % band].values,
+            df[bands_label + band].values,
             nprocs
         )
-
         flux_errors[band] = np.array_split(
-            df['BDF_FLUX_ERR_DERED_CALIB_%s' % band].values,
+            df[bands_err_label + band].values,
             nprocs
         )
-
 else:
     # data = None
     fluxes = {b: None for b in bands}
@@ -61,7 +68,7 @@ for i, band in enumerate(bands):
 nTrain = fluxes_d.shape[0]
 
 # Now, instead of training the SOM, we load the SOM we trained:
-som_weights = np.load(f'{deep_som_path}/{deep_som}', allow_pickle=True)
+som_weights = np.load(f'{output_path}/{som_deep}', allow_pickle=True)
 hh = ns.hFunc(nTrain, sigma=(30, 1))
 metric = ns.AsinhMetric(lnScaleSigma=0.4, lnScaleStep=0.03)
 som = ns.NoiseSOM(metric, None, None,
