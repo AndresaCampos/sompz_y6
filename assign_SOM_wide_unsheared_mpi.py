@@ -18,21 +18,21 @@ else:
 with open(cfgfile, 'r') as fp:
     cfg = yaml.safe_load(fp)
 
+# Some hardcoded variables that need a bit more thought
 som_type = 'wide'
 shear = 'unsheared'
 
+# Read variables from config file
 som_wide = cfg['som_wide']
 som_dim = cfg['wide_som_dim']
 output_path = cfg['out_dir']
+wide_file = cfg['wide_file']
 wide_h5_path = cfg['wide_h5_path']
+bands = cfg['wide_bands']
 bands_label = cfg['wide_bands_label']
 bands_err_label = cfg['wide_bands_err_label']
 
-# This is just an example of wide field data file you can use
-wide_file = cfg['wide_file']
-
-bands = cfg['wide_bands']
-
+# Load data
 if rank == 0:
     with h5py.File(wide_file, 'r') as f:
         ind_mcal = f['index']['select']
