@@ -46,6 +46,7 @@ if rank == 0:
             df[bands_err_label + band].values,
             nprocs
         )
+    os.system(f'mkdir -p {output_path}/{som_type}_{data_type}')
 else:
     # data = None
     fluxes = {b: None for b in bands}
