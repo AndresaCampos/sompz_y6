@@ -1,6 +1,10 @@
 import numpy as np
 import pandas
 from matplotlib import pyplot as pl
+import numba
+from tqdm import tqdm
+from multiprocessing import Pool
+from itertools import starmap
 
 
 # import cmasher as cmr
@@ -18,7 +22,7 @@ class NoiseSOM:
                  wrap=False,
                  logF=True,
                  initialize='uniform',
-                 gridOverDimensions=None):
+                 gridOverDimensions=None, pool=None):
         """
         metric: a class to define the distance metric and shifting rules.
         data, errors: arrays of shape (M,N) giving the values and errors, respectively,
@@ -154,13 +158,12 @@ class NoiseSOM:
 
         # Training loop
         minLearn = 0.001  # Don't update cells whose learning function is below this
-        for i in range(nTrain):
-            if i % 10000 == 0:
-                print('Training', i)
+
+        for i in tqdm(range(nTrain)):
             # Calculate p , get BMU
             dd = data[order[i]]
             err = ee[order[i]]
-            bmu = self.getBMU(dd, err)
+            bmu = self.getBMU(dd, err, pool)
 
             # Get the learning function values
             fLearn = learning(xy, shape=self.shape, wrap=self.wrap, bmu=bmu, iteration=i)
@@ -175,20 +178,20 @@ class NoiseSOM:
 
         return
 
-    def chisq(self, data, errors):
+    def chisq(self, data, errors, pool):
         """
         Return (flattened) array of -2 ln(probabilities) for each cell,
         i.e. distance-squared.
         """
 
-        return self.metric(self.weights, data, errors)
+        return self.metric(self.weights, data, errors, pool)
 
-    def getBMU(self, data, errors):
+    def getBMU(self, data, errors, pool):
         """
         Assign a feature vector to a cell with maximum probability.
         Returns flattened index of BMU.
         """
-        return np.argmin(self.chisq(data, errors))
+        return np.argmin(self.chisq(data, errors, pool))
 
     def classify(self, data, errors):
         """
@@ -200,9 +203,7 @@ class NoiseSOM:
         nPts = data.shape[0]
         bmu = np.zeros(nPts, dtype=int)
         dsq = np.zeros(nPts, dtype=float)
-        for first in range(0, nPts, blocksize):
-            if first % 10 == 0:
-                print("classifying", first)
+        for first in tqdm(range(0, nPts, blocksize)):
             last = min(first + blocksize, nPts)
             d = self.metric(self.weights, data[first:last], errors[first:last])
             bb = np.argmin(d, axis=0)
@@ -299,6 +300,36 @@ class hFunc:
      to move `fractions` of the way to the `features`, where `fractions` has shape (nCells,) of
      values between 0 and 1.  The new nodal features must remain positive.
 '''
+@numba.njit
+def bottleneck(w, vnS):
+    dn = np.arcsinh(vnS)
+    tmp = w * np.log(2 * vnS) + dn
+    return tmp, dn
+
+def parallel_dsq(vn, s, w, df, h, sPenalty):
+    vnS  = s*vn
+    tmp, dn = bottleneck(w, vnS)
+    ####
+    if np.any(np.isinf(tmp)):
+        print("inf tmp at", np.where(np.isinf(tmp)))
+        print(np.any(np.isinf(w)),
+              np.any(np.isinf(vnS)),
+              np.any(np.isinf(dn)),
+              np.any(vnS <= 0))
+    if np.any(np.isnan(tmp)):
+        print("nan tmp at", np.where(np.isnan(tmp)))
+        print(np.any(np.isnan(w)),
+              np.any(np.isnan(vnS)),
+              np.any(np.isnan(dn)),
+              np.any(vnS <= 0))
+
+    dn = tmp / (1 + w)
+    d = (dn - df) * h
+    dsq0 = np.sum(d * d, axis=3)  # Sum distance over features
+    # Now add penalty for the scaling factor
+    dsq0 += sPenalty
+    # Take minimum distance of all scaling factors
+    return np.min(dsq0, axis=0)
 
 
 class AsinhMetric:
@@ -325,8 +356,8 @@ class AsinhMetric:
             self.s = np.ones(1, dtype=float)
             self.sPenalty = self.s * 0.
         return
-
-    def __call__(self, cells, features, errors):
+    #@numba.njit
+    def __call__(self, cells, features, errors, pool=None):
         if len(cells.shape) != 2:
             raise ValueError('Metric cells is wrong dimension')
         if features.shape != errors.shape:
@@ -352,7 +383,11 @@ class AsinhMetric:
         # and return the one with least distance.
         # Break the cells into bunches to avoid super-large 4d arrays
 
-        chunk = 512
+        #chunk = 512
+        if pool is not None:
+            nchunk=4096
+        else:
+            nchunk = 8
         # Here is the destination array for the results
         dsq = np.zeros((vn.shape[0], vf.shape[0]), dtype=float)
         df = np.arcsinh(vf)
@@ -364,34 +399,18 @@ class AsinhMetric:
             print('nan in w at', np.where(np.isnan(w)))
 
         h = np.hypot(1, vf)
-        for first in range(0, vn.shape[0], chunk):
-            last = min(first + chunk, vn.shape[0])
-            # Create rescaled cells, shape=(nS,nCells,nTargets,nFeatures)
-            vnS = self.s[:, np.newaxis, np.newaxis, np.newaxis] * vn[first:last, :]
-            dn = np.arcsinh(vnS)
-            tmp = w * np.log(2 * vnS) + dn
-            ####
-            if np.any(np.isinf(tmp)):
-                print("inf tmp at", np.where(np.isinf(tmp)))
-                print(np.any(np.isinf(w)),
-                      np.any(np.isinf(vnS)),
-                      np.any(np.isinf(dn)),
-                      np.any(vnS <= 0))
-            if np.any(np.isnan(tmp)):
-                print("nan tmp at", np.where(np.isnan(tmp)))
-                print(np.any(np.isnan(w)),
-                      np.any(np.isnan(vnS)),
-                      np.any(np.isnan(dn)),
-                      np.any(vnS <= 0))
 
-            dn = tmp / (1 + w)
-            d = (dn - df) * h
-            dsq0 = np.sum(d * d, axis=3)  # Sum distance over features
-            # Now add penalty for the scaling factor
-            dsq0 += self.sPenalty[:, np.newaxis, np.newaxis]
-            # Take minimum distance of all scaling factors
-            dsq[first:last, :] = np.min(dsq0, axis=0)
 
+        # Take minimum distance of all scaling factors
+        s = self.s[:, np.newaxis, np.newaxis, np.newaxis]
+        sPenalty = self.sPenalty[:, np.newaxis, np.newaxis]
+        vnlist = np.split(vn, nchunk)
+        args = [(_, s, w, df, h, sPenalty) for _ in vnlist]
+        if pool is not None:
+            dsq_list = pool.starmap(parallel_dsq, args) 
+        else:
+            dsq_list = list(starmap(parallel_dsq, args))
+        dsq = np.vstack(dsq_list)
         return dsq
 
     def update(self, cells, fractions, features, errors):
