@@ -4,6 +4,7 @@
 
 You need to set up a Python 3 sompz enviroment and a Jupyter interpreter with the packages listed in *requierments.txt* and the twopoint, which is not currently avaible in conda. In a terminal inside the sompz_y6 folder, run: 
 
+$ module load python
 $ conda config --append channels conda-forge \
 $ conda create --name sompz python=3.10.9 ipykernel --file requirements.txt \
 $ conda activate sompz \

@@ -15,6 +15,7 @@ set -x
 
 export HDF5_USE_FILE_LOCKING='FALSE'
 
+module load python
 conda activate sompz
 
 srun -n 256 python assign_SOM_wide_noshear_y6_mpi.py
