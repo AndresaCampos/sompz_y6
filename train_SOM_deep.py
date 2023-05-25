@@ -5,7 +5,7 @@ import yaml
 from sompz import NoiseSOM as ns
 
 if len(sys.argv) == 1:
-    cfgfile = 'y3_sompz.cfg'
+    cfgfile = 'y6_sompz.cfg'
 else:
     cfgfile = sys.argv[1]
 
