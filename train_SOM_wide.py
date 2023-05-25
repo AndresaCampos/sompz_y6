@@ -24,19 +24,32 @@ no_shear = cfg['shear_types'][0]
 
 # Load data
 with h5py.File(wide_file, 'r') as f:
-    ind_mcal = f['index']['select']
-    total_length = len(ind_mcal)
+    if cfgfile == 'y3_sompz.cfg':
+        selection = f['index']['select']
+        total_length = len(selection)
 
-    fluxes_d = np.zeros((total_length, len(bands)))
-    fluxerrs_d = np.zeros((total_length, len(bands)))
+        fluxes_d = np.zeros((total_length, len(bands)))
+        fluxerrs_d = np.zeros((total_length, len(bands)))
 
-    for i, band in enumerate(bands):
-        print(i, band)
-        fluxes_d[:, i] = f[wide_h5_path + no_shear + bands_label + band][...][ind_mcal]
-        fluxerrs_d[:, i] = f[wide_h5_path + no_shear + bands_err_label + band][...][ind_mcal]
+        for i, band in enumerate(bands):
+            print(i, band)
+            fluxes_d[:, i] = f[wide_h5_path + no_shear + bands_label + band][...][selection]
+            fluxerrs_d[:, i] = f[wide_h5_path + no_shear + bands_err_label + band][...][selection]
+    else:
+        selection = f[wide_h5_path + no_shear + bands_label + 'i']
+        total_length = len(selection)
+
+        fluxes_d = np.zeros((total_length, len(bands)))
+        fluxerrs_d = np.zeros((total_length, len(bands)))
+
+        for i, band in enumerate(bands):
+            print(i, band)
+            fluxes_d[:, i] = f[wide_h5_path + no_shear + bands_label + band][...]
+            fluxerrs_d[:, i] = f[wide_h5_path + no_shear + bands_err_label + band][...]
+
 
 # Train the SOM with this set (takes a few hours on laptop!)
-nTrain = 10000000
+nTrain = cfg['nwide_train']
 
 # Scramble the order of the catalog for purposes of training
 indices = np.random.choice(fluxes_d.shape[0], size=nTrain, replace=False)
