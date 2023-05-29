@@ -1,10 +1,10 @@
 #!/bin/bash -l
+#SBATCH --account=des
+#SBATCH --constraint=cpu
 #SBATCH --partition=regular
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=256
-#SBATCH --constraint=haswell
 #SBATCH --time=12:00:00
-#SBATCH --license=SCRATCH
 #SBATCH --output=JOB/JOB_OUT_check_%j.txt
 #SBATCH --error=JOB/JOB_ERR_check_%j.txt
 #SBATCH --mail-user acampos@cmu.edu
