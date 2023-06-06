@@ -50,7 +50,7 @@ if rank == 0:
                 f[wide_h5_path + shear + bands_err_label + band][...][ind_mcal],
                 nprocs
             )
-    os.system(f'mkdir -p {output_path}/{som_type}_{data_type}')
+    os.system(f'mkdir -p {output_path}/{som_type}_{shear}')
 else:
     # data = None
     fluxes = {b: None for b in bands}
