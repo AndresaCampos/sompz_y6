@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --account=des
 #SBATCH --constraint=cpu
-#SBATCH --partition=regular
+#SBATCH --qos=debug
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=256
 #SBATCH --time=12:00:00
