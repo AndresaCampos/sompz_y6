@@ -17,10 +17,10 @@ def join_cell_assign_files(path_cats, som_type, shear, run_name):
                     'cells']
             cells.append(cells_subsample)
     cells = np.concatenate(cells)
-    
+
     with open(f"path_cats/cells_{som_type}_{shear}_{run_name}.pkl", "wb") as output_file:
         pickle.dump(cells, output_file)
-    
+
     # with h5py.File('sompz.hdf5', 'w', track_order=True) as f:
     #     f.create_dataset(f'catalog/sompz/{shear}/cell_wide', data=cells)
     # print(f'done with {shear}')
@@ -29,10 +29,12 @@ def join_cell_assign_files(path_cats, som_type, shear, run_name):
 path_cats = '/global/cfs/projectdirs/des/acampos/sompz_output/y6_data_preliminary'
 run_name = 'y6preliminary'
 
-# join_cell_assign_files(path_cats, som_type, 'sheared_1m')
-# join_cell_assign_files(path_cats, som_type, 'sheared_1p')
-# join_cell_assign_files(path_cats, som_type, 'sheared_2m')
-# join_cell_assign_files(path_cats, som_type, 'sheared_2p')
+join_cell_assign_files(path_cats, 'deep', 'deep_balrog', run_name)
+join_cell_assign_files(path_cats, 'wide', 'deep_balrog', run_name)
 
-join_cell_assign_files(path_cats, 'deep', 'deep_balrog',run_name)
-join_cell_assign_files(path_cats, 'wide', 'deep_balrog',run_name)
+join_cell_assign_files(path_cats, 'wide', 'unsheared', run_name)
+
+# join_cell_assign_files(path_cats, som_type, 'sheared_1m', run_name)
+# join_cell_assign_files(path_cats, som_type, 'sheared_1p', run_name)
+# join_cell_assign_files(path_cats, som_type, 'sheared_2m', run_name)
+# join_cell_assign_files(path_cats, som_type, 'sheared_2p', run_name)
