@@ -53,4 +53,8 @@ The *compute_redshifts.ipynb* notebook contains all the steps to estimate the N(
 - Compute N(z)s
 - Save everything in h5 file (input for the 2pt pipeline) 
 
+## Papers to Cite
 
+Please cite the following papers if you use this code in your research:
+
+1. [C. Sánchez,  M. Raveri,  A. Alarcon,  G. Bernstein - Propagating sample variance uncertainties in redshift calibration: simulations, theory, and application to the COSMOS2015 data](https://doi.org/10.1093/mnras/staa2542)
