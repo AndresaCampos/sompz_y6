@@ -14,8 +14,8 @@ def build_balrog_df(balrog_file,
 
     print("Length of balrog_data: " + str(len(balrog_data)))
 
-    balrog_data['cell_deep'] = pd.read_pickle(deep_cells_assignment_balrog_file, header=None, dtype=np.int32)
-    balrog_data['cell_wide_unsheared'] = pd.read_pickle(wide_cells_assignment_balrog_file, header=None, dtype=np.int32)
+    balrog_data['cell_deep'] = pd.read_pickle(deep_cells_assignment_balrog_file)
+    balrog_data['cell_wide_unsheared'] = pd.read_pickle(wide_cells_assignment_balrog_file)
 
     return balrog_data
 
@@ -93,7 +93,7 @@ def build_wide_df(wide_field_file, wide_data_assignment_df):
     return wide_data_assignment_df
 
 
-def bin_assignment_spec(spec_data, deep_som_size, wide_som_size, inj_counts, inj_ids, bin_edges):
+def bin_assignment_spec(spec_data, deep_som_size, wide_som_size, bin_edges):
     # assign gals in redshift sample to bins
     spec_data['tomo_bin'] = pd.cut(spec_data['Z'], bin_edges, labels=[0, 1, 2, 3])
 
