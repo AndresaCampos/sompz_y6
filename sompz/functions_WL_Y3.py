@@ -14,8 +14,14 @@ def build_balrog_df(balrog_file,
 
     print("Length of balrog_data: " + str(len(balrog_data)))
 
-    balrog_data['cell_deep'] = pd.read_pickle(deep_cells_assignment_balrog_file)
-    balrog_data['cell_wide_unsheared'] = pd.read_pickle(wide_cells_assignment_balrog_file)
+    try:
+        balrog_data['cell_deep'] = pd.read_pickle(deep_cells_assignment_balrog_file)
+        balrog_data['cell_wide_unsheared'] = pd.read_pickle(wide_cells_assignment_balrog_file)
+    except:
+        balrog_data['cell_deep'] = pd.read_csv(deep_cells_assignment_balrog_file, header=None, dtype=np.int32)
+        balrog_data['cell_wide_unsheared'] = pd.read_csv(wide_cells_assignment_balrog_file, header=None, dtype=np.int32)
+
+    return balrog_data
 
     return balrog_data
 
@@ -42,7 +48,9 @@ def build_spec_df(cosmos_file, deep_data):
 
     zpdfcols = ["Z{:.2f}".format(s).replace(".", "_") for s in np.arange(0, 6.01, 0.01)]
     zpdfcols_indices = [cosmos_z.columns.get_loc(_) for _ in zpdfcols]
-    cosmos = pd.concat([cosmos, pd.DataFrame(-1 * np.ones((len(cosmos), len(zpdfcols))), columns=zpdfcols, index=cosmos.index)], axis=1)
+    cosmos = pd.concat(
+        [cosmos, pd.DataFrame(-1 * np.ones((len(cosmos), len(zpdfcols))), columns=zpdfcols, index=cosmos.index)],
+        axis=1)
     cosmos.loc[is_match, zpdfcols] = cosmos_z.iloc[idx[is_match], zpdfcols_indices].values
 
     cosmos.loc[is_match, 'LAIGLE_ID'] = cosmos_z.iloc[idx[is_match], cosmos_z.columns.get_loc('ID')].values
