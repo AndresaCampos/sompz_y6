@@ -58,3 +58,5 @@ The *compute_redshifts.ipynb* notebook contains all the steps to estimate the N(
 Please cite the following papers if you use this code in your research:
 
 1. [C. Sánchez,  M. Raveri,  A. Alarcon,  G. Bernstein - Propagating sample variance uncertainties in redshift calibration: simulations, theory, and application to the COSMOS2015 data](https://doi.org/10.1093/mnras/staa2542)
+2. [R. Buchs, et al. - Phenotypic redshifts with self-organizing maps: A novel method to characterize redshift distributions of source galaxies for weak lensing](https://doi.org/10.1093/mnras/stz2162)
+3. [J. Myles,  A. Alarcon, et al. (DES Collaboration) - Dark Energy Survey Year 3 results: redshift calibration of the weak lensing source galaxies](https://doi.org/10.1093/mnras/stab1515)
