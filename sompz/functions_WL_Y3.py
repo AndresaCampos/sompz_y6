@@ -75,8 +75,7 @@ def build_wide_df(wide_field_file, wide_data_assignment_df):
         select_metacal = f['index']['select']
         print("read select metacal done")
 
-        wide_data_assignment_df['coadd_object_id'] = np.array(f['catalog/metacal/unsheared/coadd_object_id'][:])[
-            select_metacal]
+        wide_data_assignment_df['coadd_object_id'] = np.array(f['catalog/metacal/unsheared/coadd_object_id'][:])[select_metacal]
         print("read coadd_object_id done")
 
         # wide_data_assignment_df['unsheared/flux_i']=np.array(f['catalog/metacal/unsheared/flux_i'][:])[select_metacal]
