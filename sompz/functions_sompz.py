@@ -52,6 +52,14 @@ def calculate_weights(smooth_response_file, snr, size_ratio, injection_counts, u
     return w
 
 
+def calculate_wide_overlap_weight(smooth_response_file, snr, size_ratio, unsheared_weight):
+    smooth_response = smooth_response_weight(snr, size_ratio, smooth_response_file)
+    w = np.ones(len(unsheared_weight))
+    w *= smooth_response / 2
+    w *= unsheared_weight
+    return w
+
+
 def calculate_pcchat(deep_som_size, wide_som_size, cell_deep_assign, cell_wide_assign, overlap_weight):
     pcchat_num = np.zeros((deep_som_size, wide_som_size))
     np.add.at(pcchat_num,
@@ -251,7 +259,8 @@ def histogram(data, deep_data, key, cells, cell_weights, pcchat, overlap_weighte
     """
     # get sample, p(z|c)
     all_cells = np.arange(deep_som_size)
-    hists_deep = get_deep_histograms(data, deep_data, key=key, cells=all_cells, overlap_weighted_pzc=overlap_weighted_pzc,
+    hists_deep = get_deep_histograms(data, deep_data, key=key, cells=all_cells,
+                                     overlap_weighted_pzc=overlap_weighted_pzc,
                                      bins=bins, interpolate_kwargs=interpolate_kwargs)
     if individual_chat:  # then compute p(z|chat) for each individual cell in cells and return histograms
         hists = []
@@ -671,7 +680,7 @@ def save_des_nz(hists, zbins, n_bins, outdir, run_name, suffix):
     os.system('mkdir -p ' + outdir)
     os.system('chmod -R a+rx ' + outdir)
 
-    nz_out = outdir + 'Y3_y3_redshift_distributions_{}_{}.fits'.format(run_name, suffix)
+    nz_out = outdir + 'redshift_distributions_{}_{}.fits'.format(run_name, suffix)
     print('write ' + nz_out)
     hdu.writeto(nz_out, overwrite=True)
     os.system('chmod a+r ' + nz_out)
@@ -694,11 +703,9 @@ def to2point(outfile, lastnz, templatef, runname, label, data_dir):
         oldnz.kernels[0].nzs[i] = nz[bin]
         # print(oldnz.kernels[0].nzs[i])
     oldnz.to_fits(outfile, clobber=True, overwrite=True)
-    
 
 
 def smooth(outfilesmooth, twoptfile, nzsmoothfile, runname, label, data_dir, oldnz):
-
     # Troxel's smoothing adapted
     nosmooth = twopoint.TwoPointFile.from_fits(twoptfile)
     z = nosmooth.kernels[0].z
@@ -725,7 +732,7 @@ def smooth(outfilesmooth, twoptfile, nzsmoothfile, runname, label, data_dir, old
                     label=str(i) + ' smooth: %.3f' % (means_bc_piled[i]))
     plt.xlabel(r'$z$', fontsize=16)
     plt.ylabel(r'$p(z)$', fontsize=16)
-    plt.xlim(0, 2)
+    plt.xlim(0, 3)
     plt.ylim(-0.5, 4)
     plt.legend(loc='upper right', fontsize=16)
     # plt.title('Wide n(z) for Y3 SOM', fontsize=16)

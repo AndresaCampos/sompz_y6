@@ -71,31 +71,60 @@ def build_wide_df(wide_field_file, wide_data_assignment_df):
     with h5py.File(wide_field_file, 'r') as f:  # this is the master catalog
 
         # Wide Data
+        try:
+            wide_data_assignment_df['coadd_object_id'] = np.array(f['/mdet/noshear/uid'][:])  # [select_metacal]
+            print("read coadd_object_id done")
 
-        select_metacal = f['index']['select']
-        print("read select metacal done")
+            wide_data_assignment_df['unsheared/flux_g'] = np.array(
+                f['/mdet/noshear/pgauss_band_flux_g'][:])  # [select_metacal]
+            wide_data_assignment_df['unsheared/flux_i'] = np.array(
+                f['/mdet/noshear/pgauss_band_flux_i'][:])  # [select_metacal]
+            wide_data_assignment_df['unsheared/flux_r'] = np.array(
+                f['/mdet/noshear/pgauss_band_flux_r'][:])  # [select_metacal]
+            wide_data_assignment_df['unsheared/flux_z'] = np.array(
+                f['/mdet/noshear/pgauss_band_flux_z'][:])  # [select_metacal]
+            print("read unsheared/fluxes done")
 
-        wide_data_assignment_df['coadd_object_id'] = np.array(f['catalog/metacal/unsheared/coadd_object_id'][:])[select_metacal]
-        print("read coadd_object_id done")
+            wide_data_assignment_df["unsheared/snr"] = np.array(f['/mdet/noshear/gauss_s2n'][:])
+            print("read unsheared/snr done")
+            wide_data_assignment_df["unsheared/size_ratio"] = np.array(f['/mdet/noshear/gauss_T_ratio'][:])
+            print("read unsheared/T done")
 
-        # wide_data_assignment_df['unsheared/flux_i']=np.array(f['catalog/metacal/unsheared/flux_i'][:])[select_metacal]
-        # wide_data_assignment_df['unsheared/flux_r']=np.array(f['catalog/metacal/unsheared/flux_r'][:])[select_metacal]
-        # wide_data_assignment_df['unsheared/flux_z']=np.array(f['catalog/metacal/unsheared/flux_z'][:])[select_metacal]
+            gauss_g_cov_1_1 = np.array(f['/mdet/noshear/gauss_g_cov_1_1'][:])
+            gauss_g_cov_2_2 = np.array(f['/mdet/noshear/gauss_g_cov_2_2'][:])
+            weights = 1 / (0.17 * 2 + 0.5 * (gauss_g_cov_1_1 + gauss_g_cov_2_2))
 
-        wide_data_assignment_df['unsheared/T'] = np.array(f['catalog/metacal/unsheared/T'][:])[select_metacal]
-        print("read unsheared/T done")
+            wide_data_assignment_df['unsheared/weight'] = weights
+            print("read unsheared/weight done")
 
-        wide_data_assignment_df['unsheared/snr'] = np.array(f['catalog/metacal/unsheared/snr'][:])[select_metacal]
-        print("read unsheared/snr done")
 
-        wide_data_assignment_df['unsheared/R11'] = np.array(f['catalog/metacal/unsheared/R11'][:])[select_metacal]
-        print("read unsheared/R11 done")
+        except:
+            select_metacal = f['index']['select']
+            print("read select metacal done")
 
-        wide_data_assignment_df['unsheared/R22'] = np.array(f['catalog/metacal/unsheared/R22'][:])[select_metacal]
-        print("read unsheared/R22 done")
+            wide_data_assignment_df['coadd_object_id'] = np.array(f['catalog/metacal/unsheared/coadd_object_id'][:])[
+                select_metacal]
+            print("read coadd_object_id done")
 
-        wide_data_assignment_df['unsheared/weight'] = np.array(f['catalog/metacal/unsheared/weight'][:])[select_metacal]
-        print("read unsheared/wight done")
+            # wide_data_assignment_df['unsheared/flux_i']=np.array(f['catalog/metacal/unsheared/flux_i'][:])[select_metacal]
+            # wide_data_assignment_df['unsheared/flux_r']=np.array(f['catalog/metacal/unsheared/flux_r'][:])[select_metacal]
+            # wide_data_assignment_df['unsheared/flux_z']=np.array(f['catalog/metacal/unsheared/flux_z'][:])[select_metacal]
+
+            wide_data_assignment_df['unsheared/T'] = np.array(f['catalog/metacal/unsheared/T'][:])[select_metacal]
+            print("read unsheared/T done")
+
+            wide_data_assignment_df['unsheared/snr'] = np.array(f['catalog/metacal/unsheared/snr'][:])[select_metacal]
+            print("read unsheared/snr done")
+
+            #         wide_data_assignment_df['unsheared/R11'] = np.array(f['catalog/metacal/unsheared/R11'][:])[select_metacal]
+            #         print("read unsheared/R11 done")
+
+            #         wide_data_assignment_df['unsheared/R22'] = np.array(f['catalog/metacal/unsheared/R22'][:])[select_metacal]
+            #         print("read unsheared/R22 done")
+
+            wide_data_assignment_df['unsheared/weight'] = np.array(f['catalog/metacal/unsheared/weight'][:])[
+                select_metacal]
+            print("read unsheared/weight done")
 
     return wide_data_assignment_df
 
@@ -122,12 +151,12 @@ def bin_assignment_spec(spec_data, deep_som_size, wide_som_size, bin_edges):
     return tomo_bins_wide
 
 
-def calculate_wide_overlap_weight(unsheared_R11, unsheared_R22, unsheared_weight):
-    wide_overlap_weight = np.ones(len(unsheared_weight))
-    wide_overlap_weight *= np.array(unsheared_R11) + np.array(unsheared_R22)
-    wide_overlap_weight *= np.array(unsheared_weight)
+# def calculate_wide_overlap_weight(unsheared_R11, unsheared_R22, unsheared_weight):
+#     wide_overlap_weight = np.ones(len(unsheared_weight))
+#     wide_overlap_weight *= np.array(unsheared_R11) + np.array(unsheared_R22)
+#     wide_overlap_weight *= np.array(unsheared_weight)
 
-    return wide_overlap_weight
+#     return wide_overlap_weight
 
 
 def tomo_bins_wide_2d(tomo_bins_wide_dict):
