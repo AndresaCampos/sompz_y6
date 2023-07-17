@@ -92,7 +92,7 @@ def build_wide_df(wide_field_file, wide_data_assignment_df):
 
             gauss_g_cov_1_1 = np.array(f['/mdet/noshear/gauss_g_cov_1_1'][:])
             gauss_g_cov_2_2 = np.array(f['/mdet/noshear/gauss_g_cov_2_2'][:])
-            weights = 1 / (0.17 * 2 + 0.5 * (gauss_g_cov_1_1 + gauss_g_cov_2_2))
+            weights = 1 / (0.17 ** 2 + 0.5 * (gauss_g_cov_1_1 + gauss_g_cov_2_2))
 
             wide_data_assignment_df['unsheared/weight'] = weights
             print("read unsheared/weight done")
