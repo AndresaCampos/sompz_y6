@@ -4,7 +4,7 @@
 #SBATCH --qos=regular
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks=256
-#SBATCH --time=30:00
+#SBATCH --time=12:00:00
 #SBATCH --output=JOB/JOB_OUT_check_%j.txt
 #SBATCH --error=JOB/JOB_ERR_check_%j.txt
 #SBATCH --mail-user acampos@cmu.edu
