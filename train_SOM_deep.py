@@ -1,3 +1,4 @@
+import os
 import pickle
 import sys
 import numpy as np
@@ -20,6 +21,7 @@ bands = cfg['deep_bands']
 bands_label = cfg['deep_bands_label']
 bands_err_label = cfg['deep_bands_err_label']
 
+os.system(f'mkdir -p {output_path}/')
 # Load data
 deep_balrog_data = pickle.load(open(deep_balrog_file, 'rb'), encoding='latin1')
 

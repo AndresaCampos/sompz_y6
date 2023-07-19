@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import yaml
@@ -22,6 +23,7 @@ wide_file = cfg['wide_file']
 wide_h5_path = cfg['wide_h5_path']
 no_shear = cfg['shear_types'][0]
 
+os.system(f'mkdir -p {output_path}/')
 # Load data
 with h5py.File(wide_file, 'r') as f:
     if cfgfile == 'y3_sompz.cfg':
