@@ -35,21 +35,32 @@ bands_err_label = cfg['wide_bands_err_label']
 # Load data
 if rank == 0:
     with h5py.File(wide_file, 'r') as f:
-        ind_mcal = f['index']['select']
-        total_length = len(ind_mcal)
-
         fluxes = {}
         flux_errors = {}
-        for i, band in enumerate(bands):
-            print(i, band)
-            fluxes[band] = np.array_split(
-                f[wide_h5_path + shear + bands_label + band][...][ind_mcal],
-                nprocs
-            )
-            flux_errors[band] = np.array_split(
-                f[wide_h5_path + shear + bands_err_label + band][...][ind_mcal],
-                nprocs
-            )
+
+        if cfgfile == 'y3_sompz.cfg':
+            ind_mcal = f['index']['select']
+            for i, band in enumerate(bands):
+                print(i, band)
+                fluxes[band] = np.array_split(
+                    f[wide_h5_path + shear + bands_label + band][...][ind_mcal],
+                    nprocs
+                )
+                flux_errors[band] = np.array_split(
+                    f[wide_h5_path + shear + bands_err_label + band][...][ind_mcal],
+                    nprocs
+                )
+        else:
+            for i, band in enumerate(bands):
+                print(i, band)
+                fluxes[band] = np.array_split(
+                    f[wide_h5_path + shear + bands_label + band][...],
+                    nprocs
+                )
+                flux_errors[band] = np.array_split(
+                    f[wide_h5_path + shear + bands_err_label + band][...],
+                    nprocs
+                )
     os.system(f'mkdir -p {output_path}/{som_type}_{shear}')
 else:
     # data = None
@@ -89,7 +100,7 @@ inds = np.array_split(np.arange(len(fluxes_d)), nsubsets)
 # This function checks whether you have already run that subset, and if not it runs the SOM classifier
 def assign_som(ind):
     print(f'Running rank {rank}, index {ind}')
-    filename = f'{output_path}/{som_type}_{shear}/som_wide_32_32_1e7_assign_{som_type}_{shear}_{rank}_subsample_{ind}.npz'
+    filename = f'{output_path}/{som_type}_{shear}/som_{som_type}_32_32_1e7_assign_{shear}_{rank}_subsample_{ind}.npz'
     if not os.path.exists(filename):
         print('Running')
         cells_test, _ = som.classify(fluxes_d[inds[ind]], fluxerrs_d[inds[ind]])
